@@ -96,6 +96,22 @@ struct ValueTests {
         #expect(PLCValue.int(-5).formatted(as: .int) == "-5")
     }
 
+    @Test func parsesTypedInput() {
+        #expect(ValueParser.parse("TRUE", as: .bool) == .bool(true))
+        #expect(ValueParser.parse("off", as: .bool) == .bool(false))
+        #expect(ValueParser.parse("16#FF", as: .word) == .int(255))
+        #expect(ValueParser.parse("16#FFFF", as: .int) == .int(-1))
+        #expect(ValueParser.parse("40000", as: .int) == nil)
+        #expect(ValueParser.parse("K10", as: .int) == .int(10))
+        #expect(ValueParser.parse("H1F", as: .word) == .int(31))
+        #expect(ValueParser.parse("INT#-5", as: .int) == .int(-5))
+        #expect(ValueParser.parse("2#1010", as: .byte) == .int(10))
+        #expect(ValueParser.parse("E1.5", as: .real) == .real(1.5))
+        #expect(ValueParser.parse("12,5", as: .real) == nil)
+        #expect(ValueParser.parse("T#1s_500ms", as: .time) == .time(1_500))
+        #expect(ValueParser.parse("TIME#5s", as: .time) == .time(5_000))
+    }
+
     @Test func storingWrapsIntoTheTargetType() {
         #expect(PLCValue.int(70_000).converted(to: .int) == .int(4_464))
         #expect(PLCValue.int(-1).converted(to: .byte) == .int(255))
