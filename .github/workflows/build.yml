@@ -1,0 +1,96 @@
+name: Build
+
+on:
+  push:
+    branches: ["**"]
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: "Publish a release under this tag, e.g. v1.1. Leave empty to only build."
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Select Xcode 26
+        run: |
+          ls -d /Applications/Xcode*.app
+          sudo xcode-select -s "$(ls -d /Applications/Xcode_26*.app | sort -V | tail -1)"
+          xcodebuild -version
+
+      # Ad-hoc signing ("-") so CI needs no certificates. Hardened runtime is
+      # off for tests only: its library validation rejects the ad-hoc test
+      # bundle injected into the ad-hoc host app.
+      - name: Unit tests
+        run: |
+          xcodebuild test \
+            -project GyozaPortalworks.xcodeproj \
+            -scheme GyozaPortalworks \
+            -only-testing:GyozaPortalworksTests \
+            -destination 'platform=macOS' \
+            CODE_SIGN_IDENTITY=- CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM= \
+            ENABLE_HARDENED_RUNTIME=NO
+
+      - name: Build release app
+        run: |
+          xcodebuild build \
+            -project GyozaPortalworks.xcodeproj \
+            -target GyozaPortalworks \
+            -configuration Release \
+            SYMROOT="$PWD/build" \
+            CODE_SIGN_IDENTITY=- CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM=
+
+      # Facts the app depends on at runtime that no unit test can see.
+      - name: Verify the built app
+        run: |
+          APP=build/Release/GyozaPortalworks.app
+          echo "== Entitlements =="
+          codesign -d --entitlements - --xml "$APP" > entitlements.plist
+          for key in com.apple.security.app-sandbox com.apple.security.files.user-selected.read-write; do
+            grep -q "$key" entitlements.plist || { echo "Missing entitlement $key"; exit 1; }
+          done
+          echo "== Minimum macOS =="
+          /usr/libexec/PlistBuddy -c "Print :LSMinimumSystemVersion" "$APP/Contents/Info.plist"
+
+      - name: Package
+        run: |
+          codesign --verify --deep --strict build/Release/GyozaPortalworks.app
+          ditto -c -k --keepParent build/Release/GyozaPortalworks.app GyozaPortalworks.zip
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: GyozaPortalworks
+          path: GyozaPortalworks.zip
+
+  # Runs for a pushed v* tag, or a manual run given a release tag (GitHub
+  # then creates the tag on the built commit).
+  release:
+    if: startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.release_tag != '')
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: GyozaPortalworks
+
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG_INPUT: ${{ inputs.release_tag }}
+        run: |
+          TAG="${TAG_INPUT:-$GITHUB_REF_NAME}"
+          gh release create "$TAG" GyozaPortalworks.zip \
+            --repo "$GITHUB_REPOSITORY" \
+            --target "$GITHUB_SHA" \
+            --title "GyozaPortalworks ${TAG#v}" \
+            --generate-notes
