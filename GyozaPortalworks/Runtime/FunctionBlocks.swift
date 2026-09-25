@@ -333,13 +333,18 @@ nonisolated enum FunctionBlockLibrary {
         let down = kind != .ctu && io.bool("CD")
         let reset = kind != .ctd && io.bool("R")
         let load = kind != .ctu && io.bool("LD")
+        let upEdge = up && !memory.previousInput
+        let downEdge = down && !memory.previousSecondInput
         if reset {
             value = 0
         } else if load {
             value = preset
-        } else {
-            if up && !memory.previousInput && value < range.upperBound { value += 1 }
-            if down && !memory.previousSecondInput && value > range.lowerBound { value -= 1 }
+        } else if upEdge && downEdge {
+            // Both edges in one call cancel out (TIA CTUD).
+        } else if upEdge && value < range.upperBound {
+            value += 1
+        } else if downEdge && value > range.lowerBound {
+            value -= 1
         }
         io.set("CV", integer: value)
         switch kind {

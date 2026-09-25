@@ -275,6 +275,20 @@ struct FunctionBlockTests {
         #expect(node.member("Q")?.read() == .bool(true))
     }
 
+    @Test func upDownCounterIgnoresSimultaneousEdges() {
+        let (type, node) = make("CTUD_INT")
+        step(type, node, at: 0, ["PV": .int(5), "CU": .bool(true)])
+        #expect(node.member("CV")?.read() == .int(1))
+        step(type, node, at: 10, ["CU": .bool(false)])
+        step(type, node, at: 20, ["CU": .bool(true), "CD": .bool(true)])
+        #expect(node.member("CV")?.read() == .int(1))
+        step(type, node, at: 30, ["R": .bool(true), "LD": .bool(true)])
+        #expect(node.member("CV")?.read() == .int(0))
+        step(type, node, at: 40, ["R": .bool(false)])
+        #expect(node.member("CV")?.read() == .int(5))
+        #expect(node.member("QU")?.read() == .bool(true))
+    }
+
     @Test func genericCounterMapsQToQU() {
         let (type, node) = make("IEC_COUNTER")
         let parameters = FunctionBlockLibrary.callParameters(of: type, operation: .ctu)
