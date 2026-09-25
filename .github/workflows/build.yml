@@ -57,6 +57,11 @@ jobs:
           for key in com.apple.security.app-sandbox com.apple.security.files.user-selected.read-write; do
             grep -q "$key" entitlements.plist || { echo "Missing entitlement $key"; exit 1; }
           done
+          echo "== App icon =="
+          /usr/libexec/PlistBuddy -c "Print :CFBundleIconName" "$APP/Contents/Info.plist"
+          test -f "$APP/Contents/Resources/AppIcon.icns" || test -f "$APP/Contents/Resources/Assets.car" \
+            || { echo "No compiled app icon"; exit 1; }
+          ls -la "$APP/Contents/Resources"
           echo "== Minimum macOS =="
           /usr/libexec/PlistBuddy -c "Print :LSMinimumSystemVersion" "$APP/Contents/Info.plist"
 
