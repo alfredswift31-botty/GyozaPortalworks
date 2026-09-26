@@ -206,8 +206,16 @@ struct CodeEditor: NSViewRepresentable {
 /// The editor's AppKit view: text with a line-number ruler, and the monitor column.
 final class CodeEditorContainer: NSView {
     let scrollView = NSScrollView()
-    // TextKit 1: the ruler and monitor column read line positions from the layout manager.
-    let textView = EditorTextView(usingTextLayoutManager: false)
+    // An explicit TextKit 1 stack: the ruler and monitor column read line
+    // positions from the layout manager.
+    let textView: EditorTextView = {
+        let storage = NSTextStorage()
+        let layoutManager = NSLayoutManager()
+        storage.addLayoutManager(layoutManager)
+        let container = NSTextContainer(size: NSSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude))
+        layoutManager.addTextContainer(container)
+        return EditorTextView(frame: .zero, textContainer: container)
+    }()
     let monitorColumn = MonitorColumnView()
     private(set) var ruler: LineNumberRuler!
     private var monitorWidth: NSLayoutConstraint!
