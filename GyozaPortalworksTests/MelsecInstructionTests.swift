@@ -329,11 +329,11 @@ struct MelsecDataInstructionTests {
         LD SM402 ROL D0 K1
         LD SM402 MOV H0001 D1
         LD SM402 ROR D1 K1
+        LD SM402 MOV H1 D3
+        LD SM402 ROL D3 K17
         LD SM402 MOV H8000 D2
         LD SM402 RST SM700
         LD SM402 RCL D2 K1
-        LD SM402 MOV H1 D3
-        LD SM402 ROL D3 K17
         """)
         rig.scan()
         #expect(rig.int("D0") == 0x0003)
