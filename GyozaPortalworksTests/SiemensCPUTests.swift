@@ -319,6 +319,68 @@ struct SiemensCPUTests {
         #expect(bench.int("\"Data\".starts") == 1)
     }
 
+    @Test func startupOBRunsOnceBeforeTheCycle() throws {
+        let bench = SiemensBench([
+            LAD.net(LAD.box(.increment, type: .int, ["IN/OUT": "\"Cycles\""])),
+        ], tags: [SiemensTag("Boots", .int, "%MW40"), SiemensTag("Cycles", .int, "%MW42"), SiemensTag("Seen", .int, "%MW44")]) { project in
+            var startup = project.addBlock(.organizationBlock, event: .startup)
+            startup.networks = [
+                LAD.net(LAD.box(.increment, type: .int, ["IN/OUT": "\"Boots\""])),
+                LAD.net(LAD.box(.move, ["IN": "\"Cycles\"", "OUT1": "\"Seen\""])),
+            ]
+            project.blocks[1] = startup
+            project.device.retentiveMarkerBytes = 64
+        }
+        try bench.run()
+        bench.scan(4)
+        #expect(bench.int("\"Boots\"") == 1)
+        #expect(bench.int("\"Cycles\"") == 5)
+        #expect(bench.int("\"Seen\"") == 0)
+        bench.cpu.setMode(.stop)
+        bench.cpu.setMode(.run)
+        bench.scan()
+        #expect(bench.int("\"Boots\"") == 2)
+        #expect(bench.int("\"Seen\"") == 5)
+        #expect(bench.int("\"Cycles\"") == 6)
+    }
+
+    @Test func dataBlocksHoldStructuredDataWithStartValues() throws {
+        let bench = SiemensBench([
+            LAD.net(LAD.box(.move, ["IN": "\"Recipe\".motor.Speed", "OUT1": "\"Recipe\".values[2]"])),
+            LAD.net(LAD.no("\"Recipe\".settings.enabled"), LAD.coil("%Q0.0")),
+            LAD.net(LAD.no("\"Recipe\".values[2].%X0"), LAD.coil("%Q0.1")),
+        ]) { project in
+            project.dataTypes = [SiemensDataType(name: "Motor", members: [
+                SiemensVariable("Speed", "Int", startValue: "1500"),
+                SiemensVariable("Direction", "Bool"),
+            ])]
+            project.dataBlocks = [SiemensDataBlock(name: "Recipe", number: 1, members: [
+                SiemensVariable("motor", "\"Motor\""),
+                SiemensVariable("values", "Array[0..4] of Int", startValue: "7"),
+                SiemensVariable("settings", "Struct", members: [
+                    SiemensVariable("enabled", "Bool", startValue: "TRUE"),
+                    SiemensVariable("limit", "Real", startValue: "2.5"),
+                ]),
+            ])]
+        }
+        try bench.run()
+        #expect(bench.int("\"Recipe\".values[0]") == 7)
+        #expect(bench.int("\"Recipe\".values[2]") == 1_500)
+        #expect(bench.real("\"Recipe\".settings.limit") == 2.5)
+        #expect(bench.cpu.digitalOutput(0))
+        #expect(!bench.cpu.digitalOutput(1))
+        try bench.modify("\"Recipe\".motor.Speed", "1501")
+        bench.scan()
+        #expect(bench.cpu.digitalOutput(1))
+
+        let broken = SiemensBench([]) { project in
+            project.dataBlocks = [SiemensDataBlock(name: "Bad", number: 1, members: [SiemensVariable("x", "\"Missing\"")])]
+        }
+        let result = broken.compile()
+        #expect(result.has(S7Messages.dataTypeNotDefined("Missing")))
+        #expect(result.diagnostics.first?.block == "Bad [DB1]")
+    }
+
     @Test func downloadKeepsDataBlockValuesUnlessReinitialized() throws {
         let bench = SiemensBench([], configure: { project in
             project.dataBlocks.append(SiemensDataBlock(name: "Data", number: 1, members: [SiemensVariable("count", "Int", startValue: "1")]))
