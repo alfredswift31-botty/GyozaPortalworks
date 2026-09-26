@@ -94,7 +94,6 @@ nonisolated final class MelsecDeviceMemory {
     private var wordStore: [[UInt16]]
     private var longIndexStore: [UInt32]
     private var deviceOwners: [ObjectIdentifier: MelsecTimerCounter] = [:]
-    private var labelOwners: [ObjectIdentifier: MelsecTimerCounter] = [:]
 
     private static let bitKinds: [MelsecDeviceKind] = [
         .input, .output, .internalRelay, .latchRelay, .linkRelay, .annunciator, .linkSpecialRelay, .stepRelay, .specialRelay,
@@ -200,27 +199,10 @@ nonisolated final class MelsecDeviceMemory {
         return group.indices.contains(number) ? group[number] : nil
     }
 
-    /// The timer or counter a contact, coil or value node belongs to, for
-    /// ST instructions such as OUT_T that receive one of them.
+    /// The timer or counter device a contact, coil or value node belongs
+    /// to, for ST instructions such as OUT_T that receive one of them.
     func owner(of node: DataNode) -> MelsecTimerCounter? {
-        let key = ObjectIdentifier(node)
-        return deviceOwners[key] ?? labelOwners[key]
-    }
-
-    /// Makes a Timer/Counter label's nodes (and its structure node) known to
-    /// `owner(of:)`.
-    func registerLabelTimerCounter(_ item: MelsecTimerCounter, structure: DataNode?) {
-        for node in [item.contact, item.coil, item.value] {
-            labelOwners[ObjectIdentifier(node)] = item
-        }
-        if let structure {
-            labelOwners[ObjectIdentifier(structure)] = item
-        }
-    }
-
-    /// Forgets the label timers of a previously loaded program.
-    func removeLabelTimerCounters() {
-        labelOwners.removeAll()
+        deviceOwners[ObjectIdentifier(node)]
     }
 
     /// The value of index register Zn as a signed offset.

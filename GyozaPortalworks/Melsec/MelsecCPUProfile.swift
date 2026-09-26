@@ -173,8 +173,8 @@ nonisolated struct MelsecCPUProfile: Hashable, Sendable {
         latchedRanges: [.latchRelay: 0..<7680],
         pointerCount: 4096,
         nestingLevels: 15,
-        digitalInputCount: 16,
-        digitalOutputCount: 16,
+        digitalInputCount: BoardAddressing.melsecCounts.digitalInputs,
+        digitalOutputCount: BoardAddressing.melsecCounts.digitalOutputs,
         analogInputRegisters: [6020, 6060],
         analogOutputRegisters: [6180],
         analogRange: 0...4000

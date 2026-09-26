@@ -229,6 +229,13 @@ nonisolated enum MelsecInstructionSet {
         table[mnemonic.uppercased()]
     }
 
+    /// The pseudo-instruction for a pointer label (P0) in front of a ladder
+    /// block: the target of CJ and CALL. Not in the Element Selection list.
+    static let pointerLabel = MelsecInstructionDefinition(
+        mnemonic: "P", kind: .pointerLabel,
+        forms: [MelsecOperandForm(operands: [MelsecOperandSpec(name: "P", role: .pointer)], steps: 1)],
+        isPulse: false, isUnconditional: true, palette: [], help: "Pointer label: the target of CJ and CALL.")
+
     /// Steps for an instruction with these operands: timer/counter coils,
     /// SET/RST and special-relay coils differ from the base form.
     static func steps(_ definition: MelsecInstructionDefinition, operands: [MelsecOperand]) -> Int {
