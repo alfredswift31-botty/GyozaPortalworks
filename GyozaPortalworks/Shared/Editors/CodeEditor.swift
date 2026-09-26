@@ -207,20 +207,19 @@ struct CodeEditor: NSViewRepresentable {
 final class CodeEditorContainer: NSView {
     let scrollView = NSScrollView()
     // An explicit TextKit 1 stack: the ruler and monitor column read line
-    // positions from the layout manager.
-    let textView: EditorTextView = {
-        let storage = NSTextStorage()
-        let layoutManager = NSLayoutManager()
-        storage.addLayoutManager(layoutManager)
-        let container = NSTextContainer(size: NSSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude))
-        layoutManager.addTextContainer(container)
-        return EditorTextView(frame: .zero, textContainer: container)
-    }()
+    // positions from the layout manager. Nothing else retains the storage.
+    private let storage = NSTextStorage()
+    let textView: EditorTextView
     let monitorColumn = MonitorColumnView()
     private(set) var ruler: LineNumberRuler!
     private var monitorWidth: NSLayoutConstraint!
 
     override init(frame frameRect: NSRect) {
+        let layoutManager = NSLayoutManager()
+        storage.addLayoutManager(layoutManager)
+        let textContainer = NSTextContainer(size: NSSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude))
+        layoutManager.addTextContainer(textContainer)
+        textView = EditorTextView(frame: .zero, textContainer: textContainer)
         super.init(frame: frameRect)
         scrollView.hasVerticalScroller = true
         scrollView.hasHorizontalScroller = true
