@@ -282,11 +282,20 @@ nonisolated extension STChecker {
         if op == .power && !common.isReal {
             result = PLCTypeRules.canConvertImplicitly(from: common, to: .real, dialect: dialect) ? .real : .lreal
         }
-        let throwsOnZero = dialect == .melsec && !result.isReal && (op == .divide || op == .modulo)
+        // GX Works: division by zero, and a float result that isn't a finite
+        // number, are operation errors (as in the ladder's / and E/).
+        let isMelsec = dialect == .melsec
+        let dividesByOperand = op == .divide || op == .modulo
         let type = result
         return STOperatorPlan(leftType: result, rightType: result, resultType: result) { a, b in
-            if throwsOnZero && b.intValue == 0 { throw STChecker.divisionByZero() }
-            return PLCOperations.arithmetic(op, a, b, as: type).value
+            if isMelsec && dividesByOperand && (type.isReal ? b.doubleValue == 0 : b.intValue == 0) {
+                throw STChecker.divisionByZero()
+            }
+            let computed = PLCOperations.arithmetic(op, a, b, as: type)
+            if isMelsec && type.isReal && !computed.isValid {
+                throw RuntimeFault(.invalidOperation, "Operation error: the floating-point result is out of range")
+            }
+            return computed.value
         }
     }
 
@@ -388,7 +397,7 @@ nonisolated extension STChecker {
         }
     }
 
-    /// GX Works: an integer division by zero is an operation error that stops the CPU.
+    /// GX Works: a division by zero is an operation error that stops the CPU.
     static func divisionByZero() -> RuntimeFault {
         RuntimeFault(.divisionByZero, "Operation error: division by zero")
     }
