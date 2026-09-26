@@ -328,7 +328,11 @@ nonisolated struct SiemensProjectCompiler {
     static func assignNumbers(_ project: inout SiemensProject) {
         for index in project.blocks.indices where project.blocks[index].isNumberAutomatic {
             let block = project.blocks[index]
-            let clash = project.blocks.indices.contains { $0 != index && project.blocks[$0].kind == block.kind && project.blocks[$0].number == block.number }
+            // The later of two automatically numbered blocks moves; a manual number always wins.
+            let clash = project.blocks.indices.contains { other in
+                other != index && project.blocks[other].kind == block.kind && project.blocks[other].number == block.number
+                    && (other < index || !project.blocks[other].isNumberAutomatic)
+            }
             let invalid = block.kind == .organizationBlock && !block.event.allows(block.number)
             guard clash || invalid else { continue }
             var candidate = project.blocks
@@ -339,7 +343,10 @@ nonisolated struct SiemensProjectCompiler {
         }
         for index in project.dataBlocks.indices where project.dataBlocks[index].isNumberAutomatic {
             let number = project.dataBlocks[index].number
-            let clash = project.dataBlocks.indices.contains { $0 != index && project.dataBlocks[$0].number == number }
+            let clash = project.dataBlocks.indices.contains { other in
+                other != index && project.dataBlocks[other].number == number
+                    && (other < index || !project.dataBlocks[other].isNumberAutomatic)
+            }
             guard clash else { continue }
             var copy = project
             copy.dataBlocks.remove(at: index)
