@@ -136,10 +136,10 @@ nonisolated struct MelsecLabelDataType: Hashable, Sendable, Codable {
         let text = rawText.trimmingCharacters(in: .whitespaces)
         let upper = text.uppercased()
         if upper.hasPrefix("ARRAY") {
-            guard let open = text.firstIndex(of: "["), let close = text.firstIndex(of: "]"), open < close,
+            guard let open = upper.firstIndex(of: "["), let close = upper.firstIndex(of: "]"), open < close,
                   let ofRange = upper.range(of: " OF ", range: close..<upper.endIndex),
-                  let bounds = MelsecLabelDataType.bounds(String(text[text.index(after: open)..<close])),
-                  let element = MelsecLabelElementType.named(String(text[ofRange.upperBound...]))
+                  let bounds = MelsecLabelDataType.bounds(String(upper[upper.index(after: open)..<close])),
+                  let element = MelsecLabelElementType.named(String(upper[ofRange.upperBound...]))
             else { return nil }
             self.init(element, arrayBounds: bounds)
             return
