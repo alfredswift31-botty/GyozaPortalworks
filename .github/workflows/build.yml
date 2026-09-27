@@ -46,6 +46,16 @@ jobs:
           mkdir -p ui-snapshots
           find "$HOME/Library/Containers" "$TMPDIR" -path '*ui-snapshots*' -name '*.png' -exec cp {} ui-snapshots/ \; 2>/dev/null || true
           ls -la ui-snapshots
+          # Also print reduced JPEGs into the log, for review where artifacts can't be fetched.
+          for f in ui-snapshots/*.png; do
+            [ -f "$f" ] || continue
+            name=$(basename "$f" .png)
+            sips -Z 1400 -s format jpeg -s formatOptions 70 "$f" --out "/tmp/$name.jpg" >/dev/null
+            echo "SNAPSHOT-BEGIN $name"
+            base64 -i "/tmp/$name.jpg" | tr -d '\n' | fold -w 4000 | sed 's/^/SNAPSHOT-DATA /'
+            echo
+            echo "SNAPSHOT-END $name"
+          done
 
       - uses: actions/upload-artifact@v4
         if: always()
