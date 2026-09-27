@@ -114,8 +114,8 @@ nonisolated final class S7NetworkBody: ExecutableBody {
     }
 }
 
-/// Wraps a block's code to remember the ENO of its last call, which a call
-/// box passes on (ExecutionContext.run doesn't return the callee's ENO).
+/// Wraps a block's code in the CPU image: remembers the ENO of its last call
+/// and gives the editor the block's LAD/FBD monitor.
 nonisolated final class S7TrackedBody: ExecutableBody {
     let inner: ExecutableBody
     private(set) var lastEnableOutput = true
