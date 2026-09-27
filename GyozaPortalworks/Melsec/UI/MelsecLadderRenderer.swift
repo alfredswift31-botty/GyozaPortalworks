@@ -60,7 +60,7 @@ struct MelsecLadderRenderer {
         let band = CGRect(x: 0, y: 0, width: layout.size.width, height: MelsecLadderLayout.headerHeight)
         context.fill(Path(band), with: .color(Color.gray.opacity(0.15)))
         for column in 0..<MelsecLadder.columnCount {
-            let x = MelsecLadderLayout.columnX(column) + MelsecLadderLayout.columnWidth(column) / 2
+            let x = layout.columnX(column) + layout.columnWidth(column) / 2
             text(context, "\(column + 1)", at: CGPoint(x: x, y: MelsecLadderLayout.headerHeight / 2), color: .secondary)
         }
     }
@@ -70,13 +70,13 @@ struct MelsecLadderRenderer {
         if row < drawing.ladder.rows.count {
             let data = drawing.ladder.rows[row]
             if data.isUnconverted {
-                let rect = CGRect(x: MelsecLadderLayout.busX, y: top, width: MelsecLadderLayout.rightBusX - MelsecLadderLayout.busX,
+                let rect = CGRect(x: MelsecLadderLayout.busX, y: top, width: layout.rightBusX - MelsecLadderLayout.busX,
                                   height: MelsecLadderLayout.rowHeight)
                 context.fill(Path(rect), with: .color(Color.gray.opacity(0.18)))
             }
             if layout.statementRows.contains(row) {
                 let band = CGRect(x: MelsecLadderLayout.busX, y: top - MelsecLadderLayout.statementHeight,
-                                  width: MelsecLadderLayout.rightBusX - MelsecLadderLayout.busX, height: MelsecLadderLayout.statementHeight)
+                                  width: layout.rightBusX - MelsecLadderLayout.busX, height: MelsecLadderLayout.statementHeight)
                 context.fill(Path(band), with: .color(commentGreen.opacity(0.18)))
                 text(context, "; " + data.statement, at: CGPoint(x: band.minX + 6, y: band.midY), color: commentGreen, anchor: .leading)
             }
@@ -98,7 +98,7 @@ struct MelsecLadderRenderer {
         let top = MelsecLadderLayout.headerHeight
         let bottom = layout.rowTop(drawing.ladder.endRow) + MelsecLadderLayout.rowHeight
         line(context, from: CGPoint(x: MelsecLadderLayout.busX, y: top), to: CGPoint(x: MelsecLadderLayout.busX, y: bottom), width: 2)
-        line(context, from: CGPoint(x: MelsecLadderLayout.rightBusX, y: top), to: CGPoint(x: MelsecLadderLayout.rightBusX, y: bottom),
+        line(context, from: CGPoint(x: layout.rightBusX, y: top), to: CGPoint(x: layout.rightBusX, y: bottom),
              color: Color.secondary.opacity(0.6), width: 1)
     }
 
@@ -110,7 +110,7 @@ struct MelsecLadderRenderer {
     private func drawEnd(_ context: GraphicsContext) {
         let row = drawing.ladder.endRow
         let y = layout.wireY(row)
-        let box = CGRect(x: MelsecLadderLayout.columnX(MelsecLadder.coilColumn) + 20, y: y - 10, width: MelsecLadderLayout.coilWidth - 40, height: 20)
+        let box = CGRect(x: layout.columnX(MelsecLadder.coilColumn) + 20, y: y - 10, width: layout.coilWidth - 40, height: 20)
         line(context, from: CGPoint(x: MelsecLadderLayout.busX, y: y), to: CGPoint(x: box.minX, y: y))
         context.stroke(Path(box), with: .color(wire), lineWidth: 1)
         text(context, "END", at: CGPoint(x: box.midX, y: y), size: 11, weight: .semibold)
@@ -138,11 +138,11 @@ struct MelsecLadderRenderer {
             }
         }
         for boundary in 1..<MelsecLadder.columnCount where data.verticalLines[boundary] {
-            let x = MelsecLadderLayout.columnX(boundary)
+            let x = layout.columnX(boundary)
             line(context, from: CGPoint(x: x, y: y), to: CGPoint(x: x, y: layout.wireY(row + 1)))
         }
         if !data.note.isEmpty {
-            let x = MelsecLadderLayout.columnX(MelsecLadder.coilColumn) + 4
+            let x = layout.columnX(MelsecLadder.coilColumn) + 4
             text(context, data.note, at: CGPoint(x: x, y: layout.rowTop(row) + MelsecLadderLayout.rowHeight - 6), size: 9,
                  color: commentGreen, anchor: .leading)
         }

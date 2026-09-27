@@ -1,3 +1,4 @@
+import CoreGraphics
 import Foundation
 
 /// Ladder editing: every key and menu command goes through `perform(_:)`.
@@ -236,7 +237,7 @@ extension MelsecWorkspace {
 extension MelsecWorkspace {
     /// What the ladder canvas draws for a program: elements, cursor, error
     /// and grey state, comments, and monitor values.
-    func ladderDrawing(programID: UUID, isFocused: Bool) -> MelsecLadderDrawing? {
+    func ladderDrawing(programID: UUID, isFocused: Bool, availableWidth: CGFloat = 0) -> MelsecLadderDrawing? {
         guard let program = program(programID) else { return nil }
         let ladder = program.ladder
         let profile = project.profile
@@ -283,7 +284,7 @@ extension MelsecWorkspace {
             }
         }
         return MelsecLadderDrawing(
-            ladder: ladder, layout: MelsecLadderLayout(ladder: ladder), cursor: cursor(for: programID), isFocused: isFocused,
+            ladder: ladder, layout: MelsecLadderLayout(ladder: ladder, availableWidth: availableWidth), cursor: cursor(for: programID), isFocused: isFocused,
             isMonitoring: monitoring, errorCells: Set((conversionErrors[programID] ?? []).map { MelsecCellRef(row: $0.row, column: $0.column) }),
             energized: energized, values: values, coilValues: coilValues, comments: comments, labels: labels,
             blockSteps: blockSteps, endStep: ladder.hasUnconvertedRows ? nil : conversion?.endStep)
