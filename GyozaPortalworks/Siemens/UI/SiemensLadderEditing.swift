@@ -414,6 +414,11 @@ nonisolated enum S7InstructionCatalog {
         ]
     }
 
+    /// An entry by id (drag and drop carries the id).
+    static func entry(id: String) -> S7CatalogEntry? {
+        (favorites + basicInstructions.flatMap(\.entries)).first { $0.id == id }
+    }
+
     /// Entries whose title contains the search text.
     static func search(_ text: String) -> [S7CatalogEntry] {
         let key = text.trimmingCharacters(in: .whitespaces).lowercased()
