@@ -321,8 +321,9 @@ nonisolated final class ExecutionContext {
     }
 
     /// Runs a block with prepared data: the caller writes inputs before and
-    /// reads outputs after.
-    func run(_ block: BlockHandle, instance: DataNode, temps: DataNode? = nil) throws {
+    /// reads outputs after. Returns the block's ENO.
+    @discardableResult
+    func run(_ block: BlockHandle, instance: DataNode, temps: DataNode? = nil) throws -> Bool {
         guard let body = block.body else {
             throw RuntimeFault(.blockNotLoaded, "\(block.displayName) is not loaded in the CPU.", block: block.displayName)
         }
@@ -331,20 +332,24 @@ nonisolated final class ExecutionContext {
         }
         callDepth += 1
         defer { callDepth -= 1 }
-        try body.execute(Frame(context: self, block: block, instance: instance, temps: temps ?? block.makeTemps()))
+        let frame = Frame(context: self, block: block, instance: instance, temps: temps ?? block.makeTemps())
+        try body.execute(frame)
+        return frame.enableOutput
     }
 
     /// Calls a function block, built-in or user, on an instance. For generic
     /// IEC_TIMER / IEC_COUNTER instances pass the operation (TON, CTU…).
-    func callFunctionBlock(_ type: FunctionBlockType, instance: DataNode, operation: BuiltInFunctionBlock? = nil) throws {
+    /// Returns the block's ENO (always TRUE for the built-in blocks).
+    @discardableResult
+    func callFunctionBlock(_ type: FunctionBlockType, instance: DataNode, operation: BuiltInFunctionBlock? = nil) throws -> Bool {
         if type.builtIn != nil {
             FunctionBlockLibrary.execute(type, operation: operation, instance: instance, now: clock)
-            return
+            return true
         }
         guard let block = block(named: type.name) else {
             throw RuntimeFault(.blockNotLoaded, "Function block \"\(type.name)\" is not loaded in the CPU.")
         }
-        try run(block, instance: instance)
+        return try run(block, instance: instance)
     }
 
     /// Counts one loop iteration (FOR, WHILE, REPEAT, backward jumps). Throws
