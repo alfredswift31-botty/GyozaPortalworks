@@ -5,6 +5,8 @@ import Foundation
 nonisolated enum S7InsertionPoint: Hashable, Sendable {
     case start(path: UUID)
     case after(element: UUID)
+    /// Right before an element (a contact inserted while the rung's coil is selected).
+    case before(element: UUID)
 }
 
 /// Which operand field of an element to edit.
@@ -64,6 +66,10 @@ nonisolated extension S7Network {
                 if case .fanOut = path.items[index] { return false }
                 path.items.insert(node, at: index + 1)
                 return true
+            case let .before(elementID):
+                guard let index = path.items.firstIndex(where: { $0.id == elementID }) else { return false }
+                path.items.insert(node, at: index)
+                return true
             }
         }
     }
@@ -84,6 +90,9 @@ nonisolated extension S7Network {
             case let .after(elementID):
                 guard let found = path.items.firstIndex(where: { $0.id == elementID }) else { return false }
                 index = found + 1
+            case let .before(elementID):
+                guard let found = path.items.firstIndex(where: { $0.id == elementID }) else { return false }
+                index = found
             }
             if index < path.items.count, case var .fanOut(group) = path.items[index], index == path.items.count - 1 {
                 group.branches.append(branch)
@@ -391,6 +400,68 @@ nonisolated extension S7Network {
             if let found = search(rung) { return found }
         }
         return nil
+    }
+
+    /// The path that holds an element, and the element's position in it.
+    func location(of elementID: UUID) -> (path: S7Path, index: Int)? {
+        var found: (path: S7Path, index: Int)?
+        forEachPath { path in
+            if found == nil, let index = path.items.firstIndex(where: { $0.id == elementID }) {
+                found = (path, index)
+            }
+        }
+        return found
+    }
+
+    /// A path (rung or branch) by id.
+    func path(_ id: UUID) -> S7Path? {
+        var found: S7Path?
+        forEachPath { path in
+            if found == nil, path.id == id { found = path }
+        }
+        return found
+    }
+
+    /// The open branch (not the main one) that contains a path or element,
+    /// with the main branch it split from: what Shift+F9 closes.
+    func openBranch(containing id: UUID) -> (branch: UUID, main: S7Path)? {
+        var found: (branch: UUID, main: S7Path)?
+        forEachPath { path in
+            guard found == nil, case let .fanOut(group)? = path.items.last, group.branches.count >= 2 else { return }
+            for branch in group.branches.dropFirst() where branch.id == id || S7Network.contains(branch, id) {
+                found = (branch.id, group.branches[0])
+                return
+            }
+        }
+        return found
+    }
+
+    /// Visits every path: rungs, branches and box pin branches, depth first.
+    func forEachPath(_ visit: (S7Path) -> Void) {
+        func walk(_ path: S7Path) {
+            visit(path)
+            for node in path.items {
+                switch node {
+                case let .parallel(group), let .fanOut(group):
+                    for branch in group.branches { walk(branch) }
+                case let .box(box):
+                    for pin in box.inputs + box.outputs {
+                        if case let .branch(branch) = pin.source { walk(branch) }
+                    }
+                default:
+                    break
+                }
+            }
+        }
+        for rung in rungs { walk(rung) }
+    }
+
+    private static func contains(_ path: S7Path, _ id: UUID) -> Bool {
+        var found = false
+        S7Network(rungs: [path]).forEachPath { inner in
+            if inner.id == id || inner.items.contains(where: { $0.id == id }) { found = true }
+        }
+        return found
     }
 
     // MARK: Internals

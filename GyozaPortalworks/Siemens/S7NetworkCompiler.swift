@@ -1120,7 +1120,7 @@ nonisolated final class S7NetworkCompiler {
                     }
                 }
             }
-            try run.frame.context.run(handle, instance: area)
+            let enableOutput = try run.frame.context.run(handle, instance: area)
             for binding in bindings {
                 let source = area.children[binding.parameter.memberIndex]
                 if let output = binding.output {
@@ -1141,7 +1141,6 @@ nonisolated final class S7NetworkCompiler {
             if let returnIndex {
                 try returnTarget.deliver(area.children[returnIndex].read(), run)
             }
-            let enableOutput = (handle.body as? S7TrackedBody)?.lastEnableOutput ?? true
             run.note(id, input: true, output: enableOutput, state: enableOutput)
             return enableOutput
         }
