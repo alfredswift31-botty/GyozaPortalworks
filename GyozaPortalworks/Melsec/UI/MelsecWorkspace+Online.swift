@@ -404,3 +404,23 @@ extension MelsecWorkspace {
         return operand + ".N"
     }
 }
+
+// MARK: ST monitoring
+
+extension MelsecWorkspace {
+    /// The trace of an ST program running in the simulator (monitor mode).
+    func structuredTextTrace(programID: UUID) -> STTrace? {
+        guard mode.isMonitoring, let cpu, let name = program(programID)?.name,
+              let image = cpu.image?.programs.first(where: { $0.name == name }),
+              case let .structuredText(body) = image.code, let program = body as? STProgram else { return nil }
+        return program.trace
+    }
+
+    /// Compile messages of an ST program as 1-based line/column marks.
+    func structuredTextMarks(programID: UUID) -> [(line: Int, column: Int, message: String, isError: Bool)] {
+        (structuredTextDiagnostics[programID] ?? []).compactMap { diagnostic in
+            guard let line = diagnostic.line else { return nil }
+            return (line, diagnostic.column ?? 1, diagnostic.message, diagnostic.severity == .error)
+        }
+    }
+}
