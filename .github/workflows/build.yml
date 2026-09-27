@@ -39,6 +39,21 @@ jobs:
             CODE_SIGN_IDENTITY=- CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM= \
             ENABLE_HARDENED_RUNTIME=NO
 
+      # The snapshot tests render the real views; keep the PNGs for review.
+      - name: Collect UI snapshots
+        if: always()
+        run: |
+          mkdir -p ui-snapshots
+          find "$HOME/Library/Containers" "$TMPDIR" -path '*ui-snapshots*' -name '*.png' -exec cp {} ui-snapshots/ \; 2>/dev/null || true
+          ls -la ui-snapshots
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ui-snapshots
+          path: ui-snapshots
+          if-no-files-found: ignore
+
       - name: Build release app
         run: |
           xcodebuild build \
