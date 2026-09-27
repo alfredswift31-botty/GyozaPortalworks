@@ -6,11 +6,20 @@ nonisolated struct MelsecCheckFinding: Hashable, Sendable {
         case error, warning
     }
 
+    /// The Program Check dialog's check items.
+    nonisolated enum Category: String, CaseIterable, Hashable, Sendable {
+        case duplicatedCoil = "Duplicated Coil"
+        case masterControl = "Consistency Pair (MC/MCR)"
+        case pointer = "Pointer (CJ/CALL/FEND/RET)"
+        case deviceRange = "Device Range"
+    }
+
     var severity: Severity
     var program: String
     /// Step number; nil for findings about the whole program.
     var step: Int?
     var message: String
+    var category: Category = .deviceRange
 }
 
 /// Tool > Check Program: duplicated coils, MC/MCR pairing, jump and call
@@ -37,7 +46,8 @@ nonisolated enum MelsecProgramCheck {
             guard let uses = coils[key], uses.count > 1, let first = uses.first else { continue }
             let places = uses.map { "\($0.program) step \($0.step)" }.joined(separator: ", ")
             findings.append(MelsecCheckFinding(severity: .warning, program: first.program, step: first.step,
-                                               message: "Duplicated coil: \(key) is output more than once (\(places)). The last OUT executed wins."))
+                                               message: "Duplicated coil: \(key) is output more than once (\(places)). The last OUT executed wins.",
+                                               category: .duplicatedCoil))
         }
         return findings
     }
@@ -52,16 +62,16 @@ nonisolated enum MelsecProgramCheck {
             case .masterControl:
                 if openZones.contains(where: { $0.level == level }) {
                     findings.append(MelsecCheckFinding(severity: .error, program: name, step: steps[index],
-                                                       message: "MC N\(level) is used again before MCR N\(level)."))
+                                                       message: "MC N\(level) is used again before MCR N\(level).", category: .masterControl))
                 } else if let last = openZones.last, level < last.level {
                     findings.append(MelsecCheckFinding(severity: .error, program: name, step: steps[index],
-                                                       message: "MC N\(level) is nested inside MC N\(last.level): nesting numbers must increase (N0, N1, …)."))
+                                                       message: "MC N\(level) is nested inside MC N\(last.level): nesting numbers must increase (N0, N1, …).", category: .masterControl))
                 }
                 openZones.append((level, steps[index]))
             case .masterControlReset:
                 guard openZones.contains(where: { $0.level == level }) else {
                     findings.append(MelsecCheckFinding(severity: .error, program: name, step: steps[index],
-                                                       message: "MCR N\(level) has no matching MC N\(level)."))
+                                                       message: "MCR N\(level) has no matching MC N\(level).", category: .masterControl))
                     continue
                 }
                 openZones.removeAll { $0.level >= level }
@@ -71,7 +81,7 @@ nonisolated enum MelsecProgramCheck {
         }
         for entry in openZones {
             findings.append(MelsecCheckFinding(severity: .error, program: name, step: entry.step,
-                                               message: "MC N\(entry.level) has no matching MCR N\(entry.level)."))
+                                               message: "MC N\(entry.level) has no matching MCR N\(entry.level).", category: .masterControl))
         }
         return findings
     }
@@ -85,7 +95,7 @@ nonisolated enum MelsecProgramCheck {
             guard case let .pointer(number)? = instruction.operands.first else { continue }
             if labels[number] != nil {
                 findings.append(MelsecCheckFinding(severity: .error, program: name, step: steps[index],
-                                                   message: "The pointer P\(number) is used more than once."))
+                                                   message: "The pointer P\(number) is used more than once.", category: .pointer))
             } else {
                 labels[number] = index
             }
@@ -95,18 +105,18 @@ nonisolated enum MelsecProgramCheck {
             guard kind == .jump || kind == .call, case let .pointer(number)? = instruction.operands.first else { continue }
             guard let target = labels[number] else {
                 findings.append(MelsecCheckFinding(severity: .error, program: name, step: steps[index],
-                                                   message: "\(instruction.mnemonic) P\(number): the pointer P\(number) does not exist."))
+                                                   message: "\(instruction.mnemonic) P\(number): the pointer P\(number) does not exist.", category: .pointer))
                 continue
             }
             if kind == .call {
                 guard let fend, target > fend else {
                     findings.append(MelsecCheckFinding(severity: .error, program: name, step: steps[index],
-                                                       message: "\(instruction.mnemonic) P\(number): a subroutine must come after FEND."))
+                                                       message: "\(instruction.mnemonic) P\(number): a subroutine must come after FEND.", category: .pointer))
                     continue
                 }
             } else if let fend, (index < fend) != (target < fend) {
                 findings.append(MelsecCheckFinding(severity: .error, program: name, step: steps[index],
-                                                   message: "CJ P\(number) jumps across FEND."))
+                                                   message: "CJ P\(number) jumps across FEND.", category: .pointer))
             }
         }
         if let fend {
@@ -114,7 +124,7 @@ nonisolated enum MelsecProgramCheck {
             if !subroutine.isEmpty, !subroutine.contains(where: { $0.definition.kind == .subroutineReturn }),
                subroutine.contains(where: { $0.definition.kind != .end && $0.definition.kind != .pointerLabel }) {
                 findings.append(MelsecCheckFinding(severity: .error, program: name, step: steps[fend],
-                                                   message: "The subroutines after FEND have no RET."))
+                                                   message: "The subroutines after FEND have no RET.", category: .pointer))
             }
         }
         return findings
