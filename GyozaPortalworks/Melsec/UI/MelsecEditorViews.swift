@@ -15,7 +15,7 @@ struct MelsecSTEditorView: View {
         CodeEditor(text: textBinding,
                    highlight: highlighter,
                    diagnostics: diagnostics,
-                   monitor: trace.map(Self.monitorEntries),
+                   monitor: monitorEntries(trace),
                    executedLines: trace?.executedLines,
                    isEditable: workspace.mode.allowsEditing,
                    controller: controller)
@@ -43,7 +43,8 @@ struct MelsecSTEditorView: View {
         return { source in MelsecSTColors.spans(source, locals: locals, globals: globals) }
     }
 
-    private static func monitorEntries(_ trace: STTrace) -> [Int: [MonitorEntry]] {
+    private func monitorEntries(_ trace: STTrace?) -> [Int: [MonitorEntry]]? {
+        guard let trace else { return nil }
         var result: [Int: [MonitorEntry]] = [:]
         for entry in trace.allEntries {
             var boolValue: Bool?

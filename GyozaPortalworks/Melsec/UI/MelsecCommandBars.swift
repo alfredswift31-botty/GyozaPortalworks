@@ -290,7 +290,8 @@ import SwiftUI
     static func shortcuts(_ workspace: MelsecWorkspace) -> [VendorShortcut] {
         var shortcuts = MelsecKeyMap.functionKeyBindings.map { binding in
             VendorShortcut.function(binding.number, MelsecKeyTranslation.eventModifiers(binding.modifiers)) {
-                workspace.perform(binding.command)
+                // Keys belong to an open dialog, not the editor behind it.
+                if workspace.sheet == nil { workspace.perform(binding.command) }
             }
         }
         shortcuts.append(.function(1) { showInstructionHelp(workspace) })
