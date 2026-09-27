@@ -93,6 +93,43 @@ struct UISnapshotTests {
         #expect(data.count > 10_000)
     }
 
+    @Test func tiaPortalNewProject() throws {
+        let workspace = SiemensWorkspace(project: .newProject(), store: nil)
+        workspace.startsSessionTimer = false
+        let data = try Snapshot.render(SiemensWorkspaceView(workspace: workspace), name: "tia-new-project")
+        #expect(data.count > 10_000)
+    }
+
+    @Test func tiaPortalMonitoringANetwork() throws {
+        let workspace = SiemensWorkspace(project: .newProject(), store: nil)
+        workspace.startsSessionTimer = false
+        for (command, operand) in [(S7EditorCommand.insertContact(.normallyOpen), "%I0.0"),
+                                   (.insertContact(.normallyClosed), "%I0.1"),
+                                   (.insertCoil(.assign), "%Q0.0")] {
+            workspace.perform(command)
+            let target = try #require(workspace.editingOperand)
+            let block = try #require(workspace.currentBlock)
+            workspace.commitOperand(operand, target: target, inBlock: block.id)
+        }
+        _ = workspace.compile()
+        workspace.startSimulation()
+        workspace.searchDevices()
+        workspace.loadFromExtendedDownload()
+        workspace.confirmLoadPreview()
+        workspace.finishLoad(startAll: true)
+        defer { workspace.stopSimulation() }
+        let cpu = try #require(workspace.cpu)
+        let mainID = try #require(workspace.project.blocks.first { $0.name == "Main" }?.id)
+        workspace.goOnline()
+        workspace.toggleMonitoring(block: mainID)
+        cpu.setDigitalInput(0, true)
+        cpu.scan(clock: 10)
+        cpu.scan(clock: 20)
+        workspace.session?.refresh()
+        let data = try Snapshot.render(SiemensWorkspaceView(workspace: workspace), name: "tia-monitoring")
+        #expect(data.count > 10_000)
+    }
+
     @Test func exercisesWindow() throws {
         let model = AppModel()
         model.environment = .gxWorks3
