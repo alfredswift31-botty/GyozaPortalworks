@@ -233,7 +233,7 @@ nonisolated extension STChecker {
         return { state in
             guard case let .node(instance) = try locate(state) else { throw STChecker.invalidAccess() }
             try code.run(state, instance) {
-                try state.frame.context.callFunctionBlock(type, instance: instance, operation: operation)
+                _ = try state.frame.context.callFunctionBlock(type, instance: instance, operation: operation)
             }
             return .normal
         }
@@ -247,7 +247,7 @@ nonisolated extension STChecker {
             guard let block else { throw RuntimeFault(.blockNotLoaded, "\(name) is not loaded in the CPU.") }
             let area = block.makeInstanceArea()
             try code.run(state, area) {
-                try state.frame.context.run(block, instance: area)
+                _ = try state.frame.context.run(block, instance: area)
             }
             return area
         }
