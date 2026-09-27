@@ -30,8 +30,36 @@ enum Snapshot {
         }
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         try data.write(to: directory.appendingPathComponent("\(name).png"))
+        printForReview(bitmap, name: name)
         window.contentView = nil
         return data
+    }
+
+    /// Prints a reduced JPEG as base64 lines in the test log, so the
+    /// snapshot can be reviewed where artifacts can't be downloaded.
+    private static func printForReview(_ bitmap: NSBitmapImageRep, name: String) {
+        let width = 1_200
+        let height = Int(Double(bitmap.pixelsHigh) * Double(width) / Double(max(1, bitmap.pixelsWide)))
+        guard let reduced = NSBitmapImageRep(bitmapDataPlanes: nil, pixelsWide: width, pixelsHigh: height, bitsPerSample: 8,
+                                             samplesPerPixel: 4, hasAlpha: true, isPlanar: false, colorSpaceName: .deviceRGB,
+                                             bytesPerRow: 0, bitsPerPixel: 0),
+              let context = NSGraphicsContext(bitmapImageRep: reduced)
+        else { return }
+        NSGraphicsContext.saveGraphicsState()
+        NSGraphicsContext.current = context
+        context.imageInterpolation = .high
+        bitmap.draw(in: NSRect(x: 0, y: 0, width: width, height: height))
+        NSGraphicsContext.restoreGraphicsState()
+        guard let jpeg = reduced.representation(using: .jpeg, properties: [.compressionFactor: 0.7]) else { return }
+        let encoded = jpeg.base64EncodedString()
+        print("SNAPSHOT-BEGIN \(name)")
+        var index = encoded.startIndex
+        while index < encoded.endIndex {
+            let end = encoded.index(index, offsetBy: 4_000, limitedBy: encoded.endIndex) ?? encoded.endIndex
+            print("SNAPSHOT-DATA \(encoded[index..<end])")
+            index = end
+        }
+        print("SNAPSHOT-END \(name)")
     }
 
     enum SnapshotError: Error {
@@ -49,7 +77,7 @@ struct UISnapshotTests {
 
     @Test func gxWorks3MonitoringASelfHold() throws {
         let workspace = MelsecWorkspace(project: .newProject())
-        try MelsecWorkspaceEditingTests.type(["LD X0", "OR Y0", "ANI X1", "OUT Y0", "LD X2", "OUT T0 K50"], into: workspace)
+        try MelsecWorkspaceEditingTests.type(["LD X0", "ANI X1", "OUT Y0", "OR Y0", "LD X2", "OUT T0 K50"], into: workspace)
         workspace.startSimulation()
         workspace.executeOnlineOperation(.startSimulation)
         defer { workspace.stopSimulation() }
