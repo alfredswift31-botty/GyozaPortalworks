@@ -44,7 +44,12 @@ import Observation
     /// The operand being typed inline.
     var editingOperand: S7OperandTarget?
     var collapsedNetworks: Set<UUID> = []
-    var isInterfaceCollapsed = false
+    /// Blocks whose interface pane the user expanded or collapsed; others follow `defaultInterfaceCollapsed`.
+    var interfaceCollapsed: [UUID: Bool] = [:]
+    /// Height of the block interface pane when expanded (drag its splitter).
+    var interfaceHeight: CGFloat = 160
+    /// Height of the Inspector window (drag its splitter).
+    var inspectorHeight: CGFloat = 190
     var inspectorTab: InspectorTab = .info
     var infoTab: InfoTab = .compile
     var taskCard: TaskCard = .instructions

@@ -32,7 +32,7 @@ struct SiemensWorkspaceView: View {
 
 /// Project tree | work area over the Inspector | task cards.
 private struct SiemensMainArea: View {
-    let workspace: SiemensWorkspace
+    @Bindable var workspace: SiemensWorkspace
 
     var body: some View {
         HSplitView {
@@ -40,12 +40,13 @@ private struct SiemensMainArea: View {
                 SiemensProjectTreeView(workspace: workspace)
                     .frame(minWidth: 180, idealWidth: 250, maxWidth: 420)
             }
-            VSplitView {
+            VStack(spacing: 0) {
                 SiemensWorkArea(workspace: workspace)
-                    .frame(minHeight: 200)
+                    .frame(maxHeight: .infinity)
                 if workspace.showsInspector {
+                    SiemensSplitter(height: $workspace.inspectorHeight, range: 90...600, growsUpward: true)
                     SiemensInspectorView(workspace: workspace)
-                        .frame(minHeight: 110, idealHeight: 190)
+                        .frame(height: workspace.inspectorHeight)
                 }
             }
             .frame(minWidth: 420)
