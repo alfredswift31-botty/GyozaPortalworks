@@ -75,7 +75,7 @@ nonisolated enum S7LadderEditing {
             }
         }
         if modifiers.contains(.control), character == "r" || character == "R" { return .insertNetwork }
-        guard modifiers.subtracting([.numericPad, .function]).isEmpty else { return nil }
+        guard modifiers.isDisjoint(with: [.shift, .control, .option, .command]) else { return nil }
         if functionKeyNumber(character) == 2 { return .editOperand }
         switch key {
         case .leftArrow: return .moveLeft

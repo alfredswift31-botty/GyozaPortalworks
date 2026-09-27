@@ -357,7 +357,7 @@ struct SiemensSCLEditorView: View {
 }
 
 /// SCL colours for the code editor.
-enum SiemensSCLStyle {
+nonisolated enum SiemensSCLStyle {
     static func highlight(_ source: String) -> [HighlightSpan] {
         STSyntax.highlight(source, dialect: .siemens).map { item in
             HighlightSpan(range: item.range, color: color(item.kind), isBold: item.kind == .keyword)

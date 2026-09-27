@@ -304,6 +304,41 @@ struct SiemensWorkspaceTests {
         try check("tia-06-batch-counter", workspace)
     }
 
+    @Test func projectTreeFollowsTIA() throws {
+        let workspace = makeWorkspace()
+        workspace.addWatchTable()
+        var rows = workspace.treeRows()
+        let titles = rows.map(\.title)
+        #expect(titles.first == "Project1")
+        #expect(titles.contains("PLC_1 [CPU 1214C DC/DC/DC]"))
+        for expected in ["Device configuration", "Online & diagnostics", "Program blocks", "Add new block", "Main [OB1]",
+                         "PLC tags", "Show all tags", "Add new tag table", "PLC data types", "Add new data type",
+                         "Watch and force tables", "Add new watch table", "Force table", "Watch table_1"] {
+            #expect(titles.contains(expected), "missing \(expected)")
+        }
+        #expect(titles.contains { $0.hasPrefix("Default tag table [") })
+        let folder = try #require(rows.first { $0.title == "Program blocks" })
+        workspace.activate(folder)
+        rows = workspace.treeRows()
+        #expect(!rows.contains { $0.title == "Main [OB1]" })
+        let add = try #require(workspace.treeRows().first { $0.title == "Add new tag table" })
+        workspace.activate(add)
+        #expect(workspace.project.tagTables.count == 2)
+        let addBlock = try #require(workspace.treeRows().first { $0.title == "PLC data types" })
+        workspace.activate(addBlock)
+        #expect(!workspace.treeRows().contains { $0.title == "Add new data type" })
+    }
+
+    @Test func instructionCatalogFollowsTIAsFolders() {
+        let folders = S7InstructionCatalog.basicInstructions.map(\.title)
+        #expect(folders.prefix(4) == ["Bit logic operations", "Timer operations", "Counter operations", "Comparator operations"])
+        #expect(S7InstructionCatalog.search("ton").contains { $0.kind == .box(.onDelayTimer) })
+        #expect(S7InstructionCatalog.entry(id: "fav-no")?.kind == .contact(.normallyOpen, nil))
+        #expect(S7InstructionCatalog.command(for: S7InstructionCatalog.favorites[3]) == .insertEmptyBox)
+        #expect(S7LadderEditing.command(for: .downArrow, modifiers: [.numericPad]) == .moveDown)
+        #expect(S7LadderEditing.command(for: .downArrow, modifiers: [.shift]) == nil)
+    }
+
     @Test func checkCPUReportsCompileErrors() {
         let workspace = makeWorkspace()
         workspace.perform(.insertContact(.normallyOpen))
