@@ -68,8 +68,11 @@ nonisolated final class MelsecCPU: SimulatedCPU {
     /// The stop error, shown until RESET or the next RUN.
     private(set) var errorMessage: String?
     private(set) var scanCount: Int64 = 0
-    /// Monitor mode: ladder programs record per-instruction state.
-    var isMonitoring = false
+    /// Monitor mode: ladder programs record per-instruction state and ST
+    /// programs fill their trace.
+    var isMonitoring = false {
+        didSet { updateMonitoredBlocks() }
+    }
     /// Forced inputs (X device number → value) override the board.
     private(set) var forcedInputs: [Int: Bool] = [:]
     /// Forced outputs (Y device number → value) override the program.
@@ -106,14 +109,33 @@ nonisolated final class MelsecCPU: SimulatedCPU {
         if mode == .run {
             startupPending = true
         }
+        updateMonitoredBlocks()
     }
 
+    private func updateMonitoredBlocks() {
+        guard let image else { return }
+        var blocks: Set<ObjectIdentifier> = []
+        if isMonitoring {
+            for program in image.programs {
+                if case .structuredText = program.code {
+                    blocks.insert(ObjectIdentifier(program.block))
+                }
+            }
+        }
+        image.context.monitoredBlocks = blocks
+    }
+
+    /// Whether a stop error is latched: RUN is refused until RESET or latch clear.
+    var hasError: Bool { errorMessage != nil }
+
+    /// RUN / STOP. As on a real FX5, a CPU stopped by an error stays in STOP
+    /// (ERROR LED on) until it is reset.
     func setMode(_ newMode: CPUMode) {
         guard newMode != mode else { return }
+        if newMode == .run, errorMessage != nil { return }
         mode = newMode
         switch newMode {
         case .run:
-            errorMessage = nil
             startupPending = true
         case .stop:
             turnOutputsOff()
@@ -136,10 +158,15 @@ nonisolated final class MelsecCPU: SimulatedCPU {
         diagnostics.append(DiagnosticEvent(time: clock, message: "CPU reset.", isError: false))
     }
 
-    /// Latch clear (only in STOP): clears latched devices too.
+    /// Latch clear (only in STOP): clears latched devices too, and the error.
     func latchClear() {
         guard mode == .stop else { return }
+        errorMessage = nil
         memory.clearAll()
+        for relay in [MelsecSpecialDevices.latestErrorRelay, MelsecSpecialDevices.latestErrorRelayNoAnnunciator,
+                      MelsecSpecialDevices.operationErrorRelay] {
+            setSpecial(relay, false)
+        }
         image?.globals.reset()
         for program in image?.programs ?? [] {
             program.labels.reset()
@@ -322,9 +349,10 @@ nonisolated final class MelsecCPU: SimulatedCPU {
         return resolved.place.read()
     }
 
-    /// Modify Value: writes `valueText` (K10, H1F, 1.5, TRUE…) to an operand.
-    func writeOperand(_ text: String, value valueText: String) throws {
-        let resolved = try place(for: text)
+    /// Modify Value: writes `valueText` (K10, H1F, 1.5, TRUE…) to an operand,
+    /// viewed as `context` (Word, Double Word, FLOAT… in the dialog).
+    func writeOperand(_ text: String, value valueText: String, context: MelsecPlaceContext = .natural) throws {
+        let resolved = try place(for: text, context: context)
         guard let value = ValueParser.parse(valueText, as: resolved.type) else {
             throw MelsecOperandError(message: "'\(valueText)' is not a valid \(resolved.type.rawValue) value.")
         }
