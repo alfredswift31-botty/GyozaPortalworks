@@ -155,8 +155,12 @@ struct STExpressionTests {
                 #expect(fault.location == "Line 2")
             }
         }
-        // Real division follows IEEE.
-        #expect(ST.evaluate("y / 0.0", as: .real, dialect: .melsec, [ST.member("y", .real, .staticVar, .real(1))]) == .real(.infinity))
+        // Real division by zero stops the CPU too, like the ladder's E/;
+        // a small divisor that truncates to 0 as an integer is fine.
+        let real = try #require(STRun.make("y := 1.0;\nr := y / z;", [ST.member("y", .real), ST.member("z", .real), ST.member("r", .real)],
+                                           dialect: .melsec))
+        #expect(throws: RuntimeFault.self) { try real.scan() }
+        #expect(ST.evaluate("y / 0.5", as: .real, dialect: .melsec, [ST.member("y", .real, .staticVar, .real(1))]) == .real(2))
     }
 
     @Test func timeArithmetic() {
