@@ -522,7 +522,7 @@ nonisolated enum ExerciseLibrary {
             ],
             hints: [
                 "F5 places a normally open contact, Shift+F5 an OR branch, F6 a normally closed contact, and F7 a coil.",
-                "Or type the instructions straight into the ladder: LD X0 ↵, OR Y0 ↵, ANI X1 ↵, OUT Y0 ↵.",
+                "Or type the instructions straight into the ladder: LD X0 ↵, ANI X1 ↵, OUT Y0 ↵. The cursor drops to the start of the next row, so OR Y0 ↵ then puts Y0 under X0 as the self-hold branch.",
             ],
             solution: """
             0   LD   X0
