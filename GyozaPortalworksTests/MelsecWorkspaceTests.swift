@@ -1,3 +1,4 @@
+import CoreGraphics
 import Foundation
 import Testing
 @testable import GyozaPortalworks
@@ -241,6 +242,22 @@ struct MelsecWorkspaceEditingTests {
         #expect(MelsecPaletteNode.ladderInput(for: "LDI")?.symbol == .openContact)
         #expect(MelsecPaletteNode.ladderInput(for: "OUT")?.symbol == .coil)
         #expect(MelsecPaletteNode.ladderInput(for: "INV")?.text == "INV")
+    }
+
+    @Test func ladderGridFitsThePaneWidth() {
+        let ladder = MelsecLadder()
+        let fitted = MelsecLadderLayout(ladder: ladder, availableWidth: 990)
+        #expect(fitted.size.width <= 990)
+        #expect(fitted.rightBusX > 900, "the grid uses the width it gets")
+        #expect(fitted.coilWidth > fitted.contactWidth)
+        let narrow = MelsecLadderLayout(ladder: ladder, availableWidth: 300)
+        #expect(narrow.contactWidth == MelsecLadderLayout.minimumContactWidth)
+        #expect(narrow.coilWidth == MelsecLadderLayout.minimumCoilWidth)
+        #expect(narrow.size.width > 300, "below the minimum the editor scrolls")
+        let cell = MelsecCellRef(row: 0, column: 11)
+        let rect = fitted.cellRect(cell)
+        #expect(fitted.cell(at: CGPoint(x: rect.midX, y: rect.midY), endRow: 0) == cell)
+        #expect(MelsecLadderLayout(ladder: ladder).contactWidth == MelsecLadderLayout.defaultContactWidth)
     }
 
     @Test func displayFormatsAndBatchRows() throws {

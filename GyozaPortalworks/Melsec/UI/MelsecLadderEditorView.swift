@@ -10,24 +10,14 @@ struct MelsecLadderEditorView: View {
     var body: some View {
         // Monitoring redraws with every simulator refresh.
         let _ = workspace.session?.frame
-        ScrollViewReader { proxy in
-            ScrollView([.horizontal, .vertical]) {
-                if let drawing = workspace.ladderDrawing(programID: programID, isFocused: isFocused) {
-                    ZStack(alignment: .topLeading) {
-                        MelsecLadderCanvas(drawing: drawing, accent: workspace.theme.accent)
-                        cursorAnchor(drawing)
-                    }
-                    .contentShape(Rectangle())
-                    .onTapGesture(count: 2, coordinateSpace: .local) { location in
-                        doubleClick(at: location, drawing: drawing)
-                    }
-                    .onTapGesture(count: 1, coordinateSpace: .local) { location in
-                        click(at: location, drawing: drawing)
-                    }
+        GeometryReader { geometry in
+            ScrollViewReader { proxy in
+                ScrollView([.horizontal, .vertical]) {
+                    grid(viewport: geometry.size)
                 }
-            }
-            .onChange(of: workspace.cursor(for: programID)) {
-                proxy.scrollTo("cursor")
+                .onChange(of: workspace.cursor(for: programID)) {
+                    proxy.scrollTo("cursor")
+                }
             }
         }
         .background(workspace.theme.editorBackground)
@@ -39,6 +29,26 @@ struct MelsecLadderEditorView: View {
         }
         .onAppear {
             isFocused = true
+        }
+    }
+
+    /// The ladder, fitted to the pane width and pinned to the top-left
+    /// (a two-axis scroll view would otherwise centre a short ladder).
+    @ViewBuilder
+    private func grid(viewport: CGSize) -> some View {
+        if let drawing = workspace.ladderDrawing(programID: programID, isFocused: isFocused, availableWidth: viewport.width) {
+            ZStack(alignment: .topLeading) {
+                MelsecLadderCanvas(drawing: drawing, accent: workspace.theme.accent)
+                cursorAnchor(drawing)
+            }
+            .contentShape(Rectangle())
+            .onTapGesture(count: 2, coordinateSpace: .local) { location in
+                doubleClick(at: location, drawing: drawing)
+            }
+            .onTapGesture(count: 1, coordinateSpace: .local) { location in
+                click(at: location, drawing: drawing)
+            }
+            .frame(minWidth: viewport.width, minHeight: viewport.height, alignment: .topLeading)
         }
     }
 
