@@ -264,6 +264,24 @@ extension SiemensWorkspace {
         editBlock(id) { block in _ = block.switchLanguage(to: language) }
     }
 
+    /// Up to this many declared rows, a block's interface pane starts collapsed.
+    static let compactInterfaceRows = 4
+
+    /// Whether the block interface pane is collapsed: a block with few rows
+    /// starts collapsed so the networks get the space; the toolbar toggles it.
+    func isInterfaceCollapsed(_ block: SiemensBlock) -> Bool {
+        if let choice = interfaceCollapsed[block.id] { return choice }
+        return Self.declaredRowCount(block) <= Self.compactInterfaceRows
+    }
+
+    func toggleInterface(_ block: SiemensBlock) {
+        interfaceCollapsed[block.id] = !isInterfaceCollapsed(block)
+    }
+
+    static func declaredRowCount(_ block: SiemensBlock) -> Int {
+        SiemensInterface.sections(for: block.kind).reduce(0) { $0 + block.interface.variables(in: $1).count }
+    }
+
     /// Whether the block's monitoring is on.
     func isMonitoring(_ id: UUID) -> Bool {
         monitoredBlocks.contains(id)

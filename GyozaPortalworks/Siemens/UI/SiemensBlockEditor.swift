@@ -10,17 +10,16 @@ struct SiemensLadderEditorView: View {
     var body: some View {
         VStack(spacing: 0) {
             SiemensBlockToolbar(workspace: workspace, block: block)
-            if !workspace.isInterfaceCollapsed {
-                SiemensInterfaceEditor(workspace: workspace, block: block)
-                    .frame(minHeight: 90, idealHeight: 170, maxHeight: 240)
-                Divider()
-            }
+            SiemensInterfacePane(workspace: workspace, block: block)
             SiemensFavoritesBar(workspace: workspace)
             SiemensMonitoringHint(workspace: workspace, block: block)
-            ScrollView([.vertical, .horizontal]) {
-                SiemensNetworkList(workspace: workspace, block: block)
-                    .padding(10)
-                    .frame(maxWidth: .infinity, alignment: .leading)
+            GeometryReader { geometry in
+                ScrollView([.vertical, .horizontal]) {
+                    SiemensNetworkList(workspace: workspace, block: block)
+                        .padding(10)
+                        .frame(minWidth: geometry.size.width, minHeight: geometry.size.height, alignment: .topLeading)
+                }
+                .defaultScrollAnchor(.topLeading)
             }
             .background(SiemensColors.theme.editorBackground)
             .focusable()
@@ -63,9 +62,9 @@ struct SiemensBlockToolbar: View {
             Divider().frame(height: 16).padding(.horizontal, 3)
             toolButton("chevron.down.2", "Open all networks") { openAll() }
             toolButton("chevron.up.2", "Close all networks") { closeAll() }
-            toolButton(workspace.isInterfaceCollapsed ? "tablecells.badge.ellipsis" : "tablecells",
-                       workspace.isInterfaceCollapsed ? "Show block interface" : "Hide block interface") {
-                workspace.isInterfaceCollapsed.toggle()
+            toolButton(workspace.isInterfaceCollapsed(block) ? "tablecells.badge.ellipsis" : "tablecells",
+                       workspace.isInterfaceCollapsed(block) ? "Show block interface" : "Hide block interface") {
+                workspace.toggleInterface(block)
             }
             Divider().frame(height: 16).padding(.horizontal, 3)
             toolButton("eyeglasses", "Monitoring on/off (Ctrl+T)", active: workspace.isMonitoring(block.id)) {
@@ -179,6 +178,7 @@ struct SiemensNetworkList: View {
             ForEach(Array(block.networks.enumerated()), id: \.element.id) { index, network in
                 SiemensNetworkView(workspace: workspace, block: block, network: network, number: index + 1,
                                    context: S7LadderContext(workspace: workspace, blockID: block.id, networkID: network.id, monitor: monitor))
+                    .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
     }
@@ -310,11 +310,7 @@ struct SiemensSCLEditorView: View {
         let _ = workspace.session?.frame
         VStack(spacing: 0) {
             SiemensBlockToolbar(workspace: workspace, block: block)
-            if !workspace.isInterfaceCollapsed {
-                SiemensInterfaceEditor(workspace: workspace, block: block)
-                    .frame(minHeight: 90, idealHeight: 170, maxHeight: 240)
-                Divider()
-            }
+            SiemensInterfacePane(workspace: workspace, block: block)
             SiemensMonitoringHint(workspace: workspace, block: block)
             CodeEditor(text: source, highlight: SiemensSCLStyle.highlight, diagnostics: diagnostics,
                        monitor: monitorEntries, executedLines: workspace.trace(ofBlock: block.id)?.executedLines,
@@ -377,5 +373,73 @@ nonisolated enum SiemensSCLStyle {
         case .operator: return .secondaryLabelColor
         case .invalid: return .systemRed
         }
+    }
+}
+
+/// The collapsible block interface pane: a one-line bar when collapsed,
+/// otherwise the interface table with a draggable splitter below it.
+struct SiemensInterfacePane: View {
+    @Bindable var workspace: SiemensWorkspace
+    let block: SiemensBlock
+
+    var body: some View {
+        if workspace.isInterfaceCollapsed(block) {
+            Button {
+                workspace.toggleInterface(block)
+            } label: {
+                HStack(spacing: 4) {
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 8, weight: .bold))
+                    Text("Block interface")
+                        .font(.system(size: 11))
+                    Text("(\(SiemensWorkspace.declaredRowCount(block)) declarations)")
+                        .font(.system(size: 10))
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                }
+                .padding(.horizontal, 8)
+                .frame(height: 20)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .background(SiemensColors.theme.paneBackground)
+            .overlay(alignment: .bottom) { Divider() }
+            .help("Show block interface")
+            .accessibilityLabel("Show block interface")
+        } else {
+            SiemensInterfaceEditor(workspace: workspace, block: block)
+                .frame(height: workspace.interfaceHeight)
+            SiemensSplitter(height: $workspace.interfaceHeight, range: 70...520, growsUpward: false)
+        }
+    }
+}
+
+/// A horizontal splitter bar: drag it to resize the pane above (or below).
+struct SiemensSplitter: View {
+    @Binding var height: CGFloat
+    let range: ClosedRange<CGFloat>
+    /// True when the resized pane is below the bar (dragging up makes it taller).
+    let growsUpward: Bool
+    @State private var startHeight: CGFloat?
+
+    var body: some View {
+        Rectangle()
+            .fill(Color.secondary.opacity(0.22))
+            .frame(height: 5)
+            .overlay(Capsule().fill(Color.secondary.opacity(0.5)).frame(width: 30, height: 2))
+            .contentShape(Rectangle())
+            .onHover { inside in
+                if inside { NSCursor.resizeUpDown.push() } else { NSCursor.pop() }
+            }
+            .gesture(DragGesture(minimumDistance: 1)
+                .onChanged { value in
+                    let start = startHeight ?? height
+                    if startHeight == nil { startHeight = height }
+                    let delta = growsUpward ? -value.translation.height : value.translation.height
+                    height = min(max(start + delta, range.lowerBound), range.upperBound)
+                }
+                .onEnded { _ in startHeight = nil })
+            .help("Drag to resize")
+            .accessibilityLabel("Resize")
     }
 }

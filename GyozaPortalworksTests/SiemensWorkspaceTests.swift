@@ -329,6 +329,20 @@ struct SiemensWorkspaceTests {
         #expect(!workspace.treeRows().contains { $0.title == "Add new data type" })
     }
 
+    @Test func layoutGivesTheNetworksTheSpace() throws {
+        let workspace = makeWorkspace()
+        let main = try #require(workspace.currentBlock)
+        #expect(workspace.isInterfaceCollapsed(main))
+        #expect(workspace.inspectorHeight >= 180 && workspace.inspectorHeight <= 200)
+        workspace.toggleInterface(main)
+        #expect(!workspace.isInterfaceCollapsed(main))
+        var busy = SiemensBlock(name: "Busy", kind: .functionBlock, number: 1)
+        busy.interface.input = (1...6).map { SiemensVariable("in\($0)", "Bool") }
+        #expect(!workspace.isInterfaceCollapsed(busy))
+        workspace.toggleInterface(busy)
+        #expect(workspace.isInterfaceCollapsed(busy))
+    }
+
     @Test func instructionCatalogFollowsTIAsFolders() {
         let folders = S7InstructionCatalog.basicInstructions.map(\.title)
         #expect(folders.prefix(4) == ["Bit logic operations", "Timer operations", "Counter operations", "Comparator operations"])
