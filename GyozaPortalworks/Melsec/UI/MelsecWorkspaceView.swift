@@ -14,10 +14,11 @@ struct MelsecWorkspaceView: View {
             MelsecStatusBar(workspace: workspace)
         }
         .background(ShortcutLayer(shortcuts: MelsecCommandBars.shortcuts(workspace)))
-        .overlay(alignment: .topTrailing) {
+        .overlay(alignment: .bottomTrailing) {
+            // Over the docking windows, so the ladder's coil column stays visible.
             if workspace.isSimulatorPanelVisible, workspace.session != nil {
                 MelsecSimulatorPanel(workspace: workspace)
-                    .padding(.top, 70)
+                    .padding(.bottom, 40)
                     .padding(.trailing, 250)
             }
         }
