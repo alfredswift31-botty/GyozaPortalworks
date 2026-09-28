@@ -13,10 +13,13 @@ struct SiemensLadderEditorView: View {
             SiemensInterfacePane(workspace: workspace, block: block)
             SiemensFavoritesBar(workspace: workspace)
             SiemensMonitoringHint(workspace: workspace, block: block)
-            ScrollView([.vertical, .horizontal]) {
-                SiemensNetworkList(workspace: workspace, block: block)
-                    .padding(10)
-                    .frame(maxWidth: .infinity, alignment: .leading)
+            GeometryReader { geometry in
+                ScrollView([.vertical, .horizontal]) {
+                    SiemensNetworkList(workspace: workspace, block: block)
+                        .padding(10)
+                        .frame(minWidth: geometry.size.width, minHeight: geometry.size.height, alignment: .topLeading)
+                }
+                .defaultScrollAnchor(.topLeading)
             }
             .background(SiemensColors.theme.editorBackground)
             .focusable()
@@ -175,6 +178,7 @@ struct SiemensNetworkList: View {
             ForEach(Array(block.networks.enumerated()), id: \.element.id) { index, network in
                 SiemensNetworkView(workspace: workspace, block: block, network: network, number: index + 1,
                                    context: S7LadderContext(workspace: workspace, blockID: block.id, networkID: network.id, monitor: monitor))
+                    .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
     }
