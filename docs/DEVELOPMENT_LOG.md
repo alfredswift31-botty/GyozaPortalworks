@@ -1,40 +1,16 @@
-# Development log
+# Development log: GyozaPortalworks
 
-This covers three Gyoza apps built in one working session, 25–28 September 2026. Written as the hand-over: what exists, how it was built, what's verified, and what's open.
+GyozaPortalworks is a Mac app for practising Siemens TIA Portal and Mitsubishi GX Works3. It was built 26–28 September 2026. This log is the hand-over: what exists, how it was built, what's verified, and what's still open.
 
 ## Releases
 
-| App | Version | Release | Notes |
+| Version | Date | Release | Notes |
 |---|---|---|---|
-| Gyoza Island | 1.1 | [v1.1](https://github.com/alfredswift31-botty/GyozaIsland/releases/tag/v1.1) | Audit and reliability pass over 1.0 |
-| GyozaYap | 1.0.1 | [v1.0.1](https://github.com/alfredswift31-botty/GyozaYap/releases/tag/v1.0.1) | 1.0 plus the user's app icon |
-| GyozaPortalworks | 1.0 | [v1.0](https://github.com/alfredswift31-botty/GyozaPortalworks/releases/tag/v1.0) | First release |
+| 1.0 | 2026-09-28 | [v1.0](https://github.com/alfredswift31-botty/GyozaPortalworks/releases/tag/v1.0) | First release |
 
 Every release is an ad-hoc-signed `.zip` built by GitHub Actions. To install, drag the app to Applications and right-click › Open the first time.
 
-## Gyoza Island 1.1 (notch panel app)
-
-The audit found and fixed:
-- re-rendering on every system-wide mouse move;
-- Apple Events to Music with no timeout, which could freeze for 2 min;
-- artwork exported on every sync;
-- the camera left running off-screen;
-- file-promise drops (Photos, Mail) that weren't accepted;
-- a scrubber stuck after a track change;
-- double page turns;
-- locale-dependent time parsing (`215,5`).
-
-Also: VoiceOver labels, unit tests, a CI build, and releases from a manual workflow run.
-
-## GyozaYap (meeting transcripts)
-
-- **1.0:** meeting detection, then mic plus system-audio capture. The system audio uses a tap-only aggregate device, which fixed a bug where "Them" stayed silent on headsets.
-- **Transcription:** on-device, with SpeechAnalyzer on macOS 26 and SFSpeechRecognizer on 15.
-- **Notes:** Apple Intelligence by default through FoundationModels, weak-linked so the app still launches on macOS 15. Claude is optional.
-- **Export:** MD, PDF, TXT and SRT.
-- **1.0.1:** the user's icon. CI checks that the icon is compiled into the app.
-
-## GyozaPortalworks 1.0 (TIA Portal + GX Works3 practice)
+## 1.0 (TIA Portal + GX Works3 practice)
 
 ### Scope decision
 The goal was one Mac app to practise both tools' real workflows: editors, vendor keys, compile/convert, download, simulate, monitor and watch. The CPU behaviour underneath is faithful, so habits transfer. It is not a copy of either product, and there are no vendor logos. The About box and README carry trademark notices.
