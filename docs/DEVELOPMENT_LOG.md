@@ -65,6 +65,10 @@ Nobody has clicked through the app on a real Mac. Focus, key handling (F-keys, C
 4. GX: a separate GX Simulator3 window (needs an `App/` window scene) and Element Selection drag-and-drop.
 5. Add `DiagnosticEvent.code` for real error codes, if they can be sourced.
 
+## After 1.0 (on `main`, not released yet)
+- **29 Sep 2026: GX exercise 1 hint fixed (commit 87ff4f0).** The hint said to type `LD X0, OR Y0, ANI X1, OUT Y0`. The `OR Y0` step fails with "An OR branch needs a ladder above it", because the editor places OR at the cursor, as GX Works3 does. The hint now gives the order the tests use: `LD X0, ANI X1, OUT Y0`, and then, with the cursor at the start of the next row, `OR Y0`. CI is green. Release it as 1.0.1 when the user asks. It's the only "type it in" hint in the exercises.
+- **First use:** the user has started learning the app on a real Mac. Nothing has been reported back yet. They were asked to note focus, key, layout and Check-my-program problems. The starter path given to them: GX exercise 1 (type, F4, simulation, F3, trainer ⇧⌘T, Check my program), then TIA exercise 1. Compare the two stop buttons: NO-wired X1 is programmed with ANI, and NC-wired S2 with a normally open contact.
+
 ## Working notes (for the next session)
 - **Branches:** `develop` is where work happens; `main` holds releases. The agent branches `st-engine`, `melsec` and `siemens` are fully merged.
 - **Releases:** run the Build workflow manually on `main` with `release_tag: vX.Y`. The dev container's proxy rejects tag pushes, so the workflow creates the tag.
