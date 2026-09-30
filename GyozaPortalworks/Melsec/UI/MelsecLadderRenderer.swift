@@ -103,6 +103,7 @@ struct MelsecLadderRenderer {
     }
 
     private func drawCursor(_ context: GraphicsContext) {
+        guard drawing.showsCursor else { return }
         let rect = layout.cellRect(drawing.cursor).insetBy(dx: 1, dy: 1)
         context.stroke(Path(rect), with: .color(drawing.isFocused ? accent : Color.secondary), lineWidth: 2)
     }

@@ -118,6 +118,8 @@ nonisolated struct MelsecLadderDrawing: Sendable {
     /// Step number at the start of each block, by first row.
     var blockSteps: [Int: Int]
     var endStep: Int?
+    /// False for a display-only ladder, such as an exercise's reference.
+    var showsCursor = true
 
     /// How an element is drawn.
     nonisolated enum Glyph: Hashable {

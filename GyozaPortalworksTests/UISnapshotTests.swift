@@ -102,6 +102,16 @@ struct UISnapshotTests {
         #expect(data.count > 10_000)
     }
 
+    /// Reference solutions drawn with the editors' own views, for review.
+    @Test(arguments: ["tia-01-seal-in", "tia-05-traffic-light", "tia-07-storage", "tia-10-scl-traffic-light",
+                      "gx-01-self-hold", "gx-05-traffic-light", "gx-10-master-control"])
+    func referenceSolution(_ id: String) throws {
+        let exercise = try #require(ExerciseLibrary.all.first { $0.id == id })
+        let view = ScrollView { ReferenceSolutionView(exercise: exercise).padding(24) }
+        let data = try Snapshot.render(view, name: "ref-\(id)", size: CGSize(width: 780, height: 1100))
+        #expect(data.count > 10_000)
+    }
+
     @Test func exercisesWindow() throws {
         let model = AppModel()
         model.environment = .gxWorks3

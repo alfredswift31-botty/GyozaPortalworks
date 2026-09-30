@@ -101,17 +101,10 @@ final class MelsecRig {
 }
 
 enum MelsecTestLadder {
-    /// Builds a ladder by typing Ladder Input texts in order. After an OR
-    /// entry the cursor moves to the next free row, ready for a new rung.
+    /// Builds a ladder by typing Ladder Input texts in order (the same
+    /// builder draws the exercises' reference ladders).
     static func build(_ inputs: [String]) throws -> MelsecLadder {
-        var editor = MelsecLadderEditor()
-        for input in inputs {
-            try editor.enterLadderInput(input)
-            if input.uppercased().hasPrefix("OR") {
-                editor.moveCursor(to: MelsecCellRef(row: editor.ladder.endRow, column: 0))
-            }
-        }
-        return editor.ladder
+        try MelsecReferenceSolutions.build(inputs)
     }
 
     /// The Conversion Result code lines of a ladder.

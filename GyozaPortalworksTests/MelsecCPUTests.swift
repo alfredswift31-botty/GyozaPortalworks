@@ -336,22 +336,9 @@ struct MelsecProjectTests {
 
 struct MelsecExerciseTests {
     /// Ladder Input sequences that draw each exercise's reference solution.
-    static let ladders: [String: [String]] = [
-        "gx-01-self-hold": ["LD X0", "ANI X1", "OUT Y0", "OR Y0"],
-        "gx-02-interlock": ["LD X0", "ANI X2", "ANI Y1", "OUT Y0", "OR Y0",
-                            "LD X1", "ANI X2", "ANI Y0", "OUT Y1", "OR Y1"],
-        "gx-03-on-delay": ["LD X0", "OUT T0 K50", "LD T0", "OUT Y0"],
-        "gx-04-flicker": ["LD X1", "ANI T2", "OUT T1 K10", "LD T1", "OUT T2 K10", "LD X1", "ANI T1", "OUT Y1"],
-        "gx-05-traffic-light": ["LD X0", "ANI X1", "OUT M0", "OR M0",
-                                "LD M0", "ANI T2", "OUT T0 K50", "LD T0", "OUT T1 K40", "LD T1", "OUT T2 K10",
-                                "LD M0", "ANI T0", "OUT Y0", "LD T0", "ANI T1", "OUT Y2", "LD T1", "ANI T2", "OUT Y1"],
-        "gx-06-counter": ["LD X0", "OUT C0 K5", "LD C0", "OUT Y0", "LD X1", "RST C0"],
-        "gx-07-parking": ["LD X0", "INCP D0", "LD X1", "DECP D0", "LD>= D0 K10", "OUT Y0", "LD< D0 K10", "OUT Y1"],
-        "gx-08-mov-compare": ["LD X0", "MOVP K100 D0", "LD X1", "MOVP K200 D0", "LD X2", "+P K10 D0",
-                              "LD> D0 K150", "OUT Y0", "LD= D0 K200", "OUT Y1"],
-        "gx-09-chaser": ["LD SM402", "MOV H1 D0", "LD SM412", "ROLP D0 K1", "LD SM400", "MOV D0 K4Y0"],
-        "gx-10-master-control": ["LD X5", "MC N0 M50", "LD X0", "OUT Y0", "LD X1", "OUT T0 K20", "LD T0", "OUT Y1", "MCR N0"],
-    ]
+    static var ladders: [String: [String]] {
+        MelsecReferenceSolutions.rungs.mapValues { $0.flatMap(\.inputs) }
+    }
 
     static var exercises: [Exercise] { ExerciseLibrary.exercises(for: .gxWorks3) }
 
@@ -374,9 +361,10 @@ struct MelsecExerciseTests {
     @Test(arguments: ExerciseLibrary.exercises(for: .gxWorks3).map(\.id))
     func ladderSolutionConvertsAndPasses(_ id: String) throws {
         let exercise = try #require(Self.exercises.first { $0.id == id })
-        let inputs = try #require(Self.ladders[id])
         var project = MelsecProject.newProject(name: id)
-        project.programs[0].ladder = try MelsecTestLadder.build(inputs)
+        project.programs[0].ladder = try #require(try MelsecReferenceSolutions.ladder(for: id))
+        #expect(project.programs[0].ladder.blocks().count == MelsecReferenceSolutions.rungs[id]?.count,
+                "one statement per rung")
         #expect(MelsecTestLadder.codes(project.programs[0].ladder) == MelsecTestLadder.codes(il: exercise.solution),
                 "the ladder converts to the reference instruction list")
         let output = MelsecProjectCompiler().compile(project)

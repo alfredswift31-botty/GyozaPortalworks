@@ -274,7 +274,7 @@ private struct SiemensNetworkHeader: View {
 }
 
 /// The rungs of a network: LAD from the left power rail, or FBD.
-private struct SiemensRungs: View {
+struct SiemensRungs: View {
     let network: S7Network
     let isFBD: Bool
     let context: S7LadderContext

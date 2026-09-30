@@ -122,12 +122,8 @@ private struct ExerciseDetail: View {
                         showsSolution.toggle()
                     }
                     if showsSolution {
-                        Text(exercise.solution)
-                            .font(.system(.callout, design: .monospaced))
-                            .textSelection(.enabled)
-                            .padding(12)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .background(.quaternary.opacity(0.5), in: RoundedRectangle(cornerRadius: 8))
+                        ReferenceSolutionView(exercise: exercise)
+                            .id(exercise.id)
                     }
                 }
             }
@@ -223,5 +219,38 @@ private struct ReportView: View {
         .padding(14)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background((report.passed ? Color.green : Color.red).opacity(0.08), in: RoundedRectangle(cornerRadius: 10))
+    }
+}
+
+/// The reference solution drawn the way the tool draws it: TIA Portal LAD
+/// networks (or SCL) with their tags, or a GX Works3 ladder with its
+/// instruction list. Built from the same programs the tests prove correct.
+struct ReferenceSolutionView: View {
+    let exercise: Exercise
+
+    var body: some View {
+        switch exercise.environment {
+        case .tiaPortal:
+            if let project = SiemensReferenceSolutions.project(for: exercise.id) {
+                SiemensReferenceView(project: project)
+            } else {
+                plainText
+            }
+        case .gxWorks3:
+            if let ladder = try? MelsecReferenceSolutions.ladder(for: exercise.id) {
+                MelsecReferenceView(exercise: exercise, ladder: ladder)
+            } else {
+                plainText
+            }
+        }
+    }
+
+    private var plainText: some View {
+        Text(exercise.solution)
+            .font(.system(.callout, design: .monospaced))
+            .textSelection(.enabled)
+            .padding(12)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(.quaternary.opacity(0.5), in: RoundedRectangle(cornerRadius: 8))
     }
 }
