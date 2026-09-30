@@ -262,7 +262,8 @@ struct MelsecLadderRenderer {
             }
         }
         let wrapped = context.resolve(Text(comment).font(.system(size: 8, design: .monospaced)).foregroundColor(commentGreen))
-        let box = CGRect(x: rect.minX + 2, y: y - 6, width: width, height: 22)
+        // Just under the symbol, and inside the row.
+        let box = CGRect(x: rect.minX + 2, y: y - 9, width: width, height: 20)
         var clipped = context
         clipped.clip(to: Path(box))
         clipped.draw(wrapped, in: box)

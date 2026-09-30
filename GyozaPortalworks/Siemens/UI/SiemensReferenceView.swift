@@ -132,6 +132,8 @@ struct SiemensReferenceView: View {
                 }
             }
             .padding(10)
+            // Room for the horizontal scroller when the networks are wider than the window.
+            .padding(.bottom, 16)
             .allowsHitTesting(false)
         }
         // Take the networks' full height; a horizontal scroll view otherwise clips the last one.
