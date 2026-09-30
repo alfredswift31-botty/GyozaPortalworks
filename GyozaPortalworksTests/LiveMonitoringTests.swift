@@ -74,4 +74,48 @@ struct LiveMonitoringTests {
         let offAgain = try live.pixels()
         #expect(offAgain != on, "The monitored network didn't redraw after %I0.0 turned off")
     }
+
+    /// Reported on a real Mac: the trainer's output lamps stayed off while the
+    /// program switched the outputs on. Only the output grid is drawn here, so
+    /// a change can only come from the lamps.
+    @Test func trainerOutputLampsFollowTheCPU() throws {
+        let workspace = SiemensWorkspace(project: .newProject(), store: nil)
+        workspace.startsSessionTimer = false
+        for (command, operand) in [(S7EditorCommand.insertContact(.normallyOpen), "%I0.0"),
+                                   (.insertCoil(.assign), "%Q0.0")] {
+            workspace.perform(command)
+            let target = try #require(workspace.editingOperand)
+            let block = try #require(workspace.currentBlock)
+            workspace.commitOperand(operand, target: target, inBlock: block.id)
+        }
+        workspace.startSimulation()
+        workspace.searchDevices()
+        workspace.loadFromExtendedDownload()
+        workspace.confirmLoadPreview()
+        workspace.finishLoad(startAll: true)
+        defer { workspace.stopSimulation() }
+        let session = try #require(workspace.session)
+        let cpu = session.cpu
+        cpu.scan(clock: 10)
+        session.refresh()
+
+        let live = LiveView(TrainerOutputGrid(session: session, exercise: nil), size: CGSize(width: 700, height: 260))
+        let off = try live.pixels()
+        #expect(!cpu.digitalOutput(0))
+
+        cpu.setDigitalInput(0, true)
+        cpu.scan(clock: 20)
+        cpu.scan(clock: 30)
+        session.refresh()
+        #expect(cpu.digitalOutput(0))
+        let on = try live.pixels()
+        #expect(on != off, "The %Q0.0 lamp didn't light while the trainer stayed open")
+
+        cpu.setDigitalInput(0, false)
+        cpu.scan(clock: 40)
+        cpu.scan(clock: 50)
+        session.refresh()
+        let offAgain = try live.pixels()
+        #expect(offAgain != on, "The %Q0.0 lamp didn't go out while the trainer stayed open")
+    }
 }

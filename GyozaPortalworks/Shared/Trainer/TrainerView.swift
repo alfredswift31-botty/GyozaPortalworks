@@ -38,25 +38,27 @@ private struct TrainerBoard: View {
                 section("Inputs") {
                     LazyVGrid(columns: columns, spacing: 14) {
                         ForEach(0..<cpu.digitalInputCount, id: \.self) { index in
-                            InputControl(session: session, index: index, assignment: exercise?.assignment(for: .digitalInput(index)))
+                            LiveRefresh(session: session) {
+                                InputControl(session: session, index: index, assignment: exercise?.assignment(for: .digitalInput(index)))
+                            }
                         }
                     }
                 }
                 section("Outputs") {
-                    LazyVGrid(columns: columns, spacing: 14) {
-                        ForEach(0..<cpu.digitalOutputCount, id: \.self) { index in
-                            OutputIndicator(name: cpu.digitalOutputName(index), isOn: cpu.digitalOutput(index), assignment: exercise?.assignment(for: .digitalOutput(index)))
-                        }
-                    }
+                    TrainerOutputGrid(session: session, exercise: exercise)
                 }
                 if cpu.analogInputCount + cpu.analogOutputCount > 0 {
                     section("Analog") {
                         VStack(alignment: .leading, spacing: 12) {
                             ForEach(0..<cpu.analogInputCount, id: \.self) { channel in
-                                AnalogInputControl(session: session, channel: channel, assignment: exercise?.assignment(for: .analogInput(channel)))
+                                LiveRefresh(session: session) {
+                                    AnalogInputControl(session: session, channel: channel, assignment: exercise?.assignment(for: .analogInput(channel)))
+                                }
                             }
                             ForEach(0..<cpu.analogOutputCount, id: \.self) { channel in
-                                AnalogOutputGauge(session: session, channel: channel, assignment: exercise?.assignment(for: .analogOutput(channel)))
+                                LiveRefresh(session: session) {
+                                    AnalogOutputGauge(session: session, channel: channel, assignment: exercise?.assignment(for: .analogOutput(channel)))
+                                }
                             }
                         }
                     }
@@ -86,6 +88,25 @@ private struct TrainerBoard: View {
                 .font(.subheadline.weight(.semibold))
                 .foregroundStyle(.secondary)
             content()
+        }
+    }
+}
+
+/// The output lamps, motors and valves.
+struct TrainerOutputGrid: View {
+    let session: SimulationSession
+    let exercise: Exercise?
+
+    private let columns = [GridItem(.adaptive(minimum: 84, maximum: 110), spacing: 10)]
+
+    var body: some View {
+        let _ = session.frame
+        let cpu = session.cpu
+        LazyVGrid(columns: columns, spacing: 14) {
+            ForEach(0..<cpu.digitalOutputCount, id: \.self) { index in
+                OutputIndicator(name: cpu.digitalOutputName(index), isOn: cpu.digitalOutput(index),
+                                assignment: exercise?.assignment(for: .digitalOutput(index)))
+            }
         }
     }
 }
