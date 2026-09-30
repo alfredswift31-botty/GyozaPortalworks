@@ -22,6 +22,10 @@ struct S7LadderContext {
     let blockID: UUID
     let networkID: UUID
     let monitor: S7BlockMonitor?
+    /// The simulation's refresh counter. `monitor` is one object the CPU
+    /// updates in place, so without a value that changes SwiftUI sees the
+    /// same inputs and skips redrawing the networks while the CPU runs.
+    var frame = 0
 
     var block: SiemensBlock? { workspace.block(blockID) }
 

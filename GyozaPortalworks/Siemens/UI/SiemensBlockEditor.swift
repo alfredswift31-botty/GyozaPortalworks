@@ -171,13 +171,14 @@ struct SiemensNetworkList: View {
     let block: SiemensBlock
 
     var body: some View {
-        let _ = workspace.session?.frame
+        let frame = workspace.session?.frame ?? 0
         let monitor = workspace.monitor(ofBlock: block.id)
         VStack(alignment: .leading, spacing: 14) {
             SiemensBlockTitle(workspace: workspace, block: block)
             ForEach(Array(block.networks.enumerated()), id: \.element.id) { index, network in
                 SiemensNetworkView(workspace: workspace, block: block, network: network, number: index + 1,
-                                   context: S7LadderContext(workspace: workspace, blockID: block.id, networkID: network.id, monitor: monitor))
+                                   context: S7LadderContext(workspace: workspace, blockID: block.id, networkID: network.id,
+                                                            monitor: monitor, frame: frame))
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
