@@ -408,11 +408,12 @@ nonisolated struct SiemensProject: Codable, Hashable, Sendable {
     /// "Call options" › Single instance for a timer, counter or R_TRIG/F_TRIG
     /// box: creates IEC_Timer_0_DB (then IEC_Timer_0_DB_1…), IEC_Counter_0_DB,
     /// R_TRIG_DB under Program resources and returns the operand to put above the box.
-    mutating func createInstanceDataBlock(for instruction: S7Instruction, dataType: PLCDataType? = nil) -> String? {
+    /// `name` is what the user typed in Call options instead of the default.
+    mutating func createInstanceDataBlock(for instruction: S7Instruction, dataType: PLCDataType? = nil, name: String? = nil) -> String? {
         guard let base = instruction.instanceNameBase(multiInstance: false),
               let typeName = instruction.instanceTypeName(dataType: dataType)
         else { return nil }
-        let unique = SiemensNaming.unique(base, among: blockNames, style: .underscore)
+        let unique = SiemensNaming.unique(name ?? base, among: blockNames, style: .underscore)
         let block = SiemensDataBlock(name: unique, number: nextFreeDataBlockNumber(), kind: .systemInstance, instanceOf: typeName,
                                      isRetain: instruction.isCounter, isCreatedAutomatically: true)
         dataBlocks.append(block)

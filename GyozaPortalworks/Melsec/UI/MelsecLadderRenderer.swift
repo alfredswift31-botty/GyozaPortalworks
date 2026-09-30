@@ -173,7 +173,7 @@ struct MelsecLadderRenderer {
             drawBox(context, title: title, rect: rect, y: y, on: on, inset: 6)
             drawValues(context, operands, rect: rect, y: y)
             if let first = operands.first, let comment = drawing.comments[first] {
-                text(context, comment, at: CGPoint(x: rect.midX, y: y + 18), size: 9, color: commentGreen)
+                drawComment(context, comment, rect: rect, y: y + 18)
             }
         }
     }
@@ -245,8 +245,27 @@ struct MelsecLadderRenderer {
         if let value = drawing.values[key] {
             text(context, value, at: CGPoint(x: rect.midX, y: y + 16), color: valueBlue, weight: .semibold)
         } else if let comment = drawing.comments[key] {
-            text(context, comment, at: CGPoint(x: rect.midX, y: y + 16), size: 9, color: commentGreen)
+            drawComment(context, comment, rect: rect, y: y + 16)
         }
+    }
+
+    /// A device comment kept inside its cell, as GX Works3 does: one line if
+    /// it fits, then a smaller font, then wrapped onto two lines. Centred on
+    /// a wide cell, a long comment would otherwise run over the bus bar.
+    private func drawComment(_ context: GraphicsContext, _ comment: String, rect: CGRect, y: CGFloat) {
+        let width = rect.width - 4
+        for size in [CGFloat(9), 8] {
+            let resolved = context.resolve(Text(comment).font(.system(size: size, design: .monospaced)).foregroundColor(commentGreen))
+            if resolved.measure(in: CGSize(width: CGFloat.greatestFiniteMagnitude, height: .greatestFiniteMagnitude)).width <= width {
+                context.draw(resolved, at: CGPoint(x: rect.midX, y: y), anchor: .center)
+                return
+            }
+        }
+        let wrapped = context.resolve(Text(comment).font(.system(size: 8, design: .monospaced)).foregroundColor(commentGreen))
+        let box = CGRect(x: rect.minX + 2, y: y - 6, width: width, height: 22)
+        var clipped = context
+        clipped.clip(to: Path(box))
+        clipped.draw(wrapped, in: box)
     }
 
     /// Monitored word values of an instruction's operands, in blue below.

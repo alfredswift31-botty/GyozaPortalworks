@@ -22,6 +22,8 @@ struct S7OperandLabel: View {
     let context: S7LadderContext
     var value: PLCValue?
     var alignment: Alignment = .center
+    /// An optional parameter left open shows "..." (not a red placeholder), as in TIA.
+    var isOptional = false
 
     var body: some View {
         if context.workspace.editingOperand == target {
@@ -30,8 +32,9 @@ struct S7OperandLabel: View {
             HStack(spacing: 3) {
                 Text(shown)
                     .font(.system(size: 11))
-                    .foregroundStyle(isPlaceholder ? SiemensColors.placeholder : Color.primary)
+                    .foregroundStyle(isMissing ? SiemensColors.placeholder : isPlaceholder ? Color.secondary : Color.primary)
                     .lineLimit(1)
+                    .minimumScaleFactor(0.75)
                     .truncationMode(.middle)
                 if let value {
                     Text(S7ValueText.text(value))
@@ -45,15 +48,20 @@ struct S7OperandLabel: View {
             .onTapGesture(count: 2) {
                 context.workspace.beginEditing(target, inBlock: context.blockID)
             }
-            .help(isPlaceholder ? "Double-click to enter an operand" : text)
-            .accessibilityLabel(isPlaceholder ? "Operand missing" : text)
+            .help(isMissing ? "Double-click to enter an operand" : isPlaceholder ? "Optional parameter: double-click to enter an operand" : text)
+            .accessibilityLabel(isMissing ? "Operand missing" : isPlaceholder ? "Optional parameter, not used" : text)
         }
     }
 
     private var isPlaceholder: Bool { S7Placeholder.isPlaceholder(text) }
 
+    /// A placeholder that must be filled in before the block compiles.
+    private var isMissing: Bool { isPlaceholder && !isOptional }
+
     private var shown: String {
-        isPlaceholder ? (placeholderBool ? S7Placeholder.bool : S7Placeholder.value) : text
+        guard isPlaceholder else { return text }
+        if isOptional { return S7Placeholder.optional }
+        return placeholderBool ? S7Placeholder.bool : S7Placeholder.value
     }
 }
 
@@ -179,7 +187,8 @@ private struct S7BoxPinColumn: View {
             }
             ForEach(pins, id: \.name) { pin in
                 S7OperandLabel(target: context.target(box.id, .pin(pin.name)), text: label(pin), placeholderBool: isBool(pin),
-                               context: context, value: status?.values[pin.name], alignment: isInput ? .trailing : .leading)
+                               context: context, value: status?.values[pin.name], alignment: isInput ? .trailing : .leading,
+                               isOptional: isOptional(pin))
                     .frame(height: S7LadderMetrics.pinRowHeight)
             }
         }
@@ -198,9 +207,17 @@ private struct S7BoxPinColumn: View {
     }
 
     private func isBool(_ pin: S7Pin) -> Bool {
+        pinSpec(pin)?.type == .bool
+    }
+
+    /// Pins the instruction doesn't require (TON's ET, a counter's CV).
+    private func isOptional(_ pin: S7Pin) -> Bool {
+        pinSpec(pin).map { !$0.isRequired } ?? false
+    }
+
+    private func pinSpec(_ pin: S7Pin) -> S7PinSpec? {
         let spec = box.instruction.spec
-        let pinSpec = (spec.inputs + spec.outputs).first { $0.name.caseInsensitiveCompare(pin.name) == .orderedSame }
-        return pinSpec?.type == .bool
+        return (spec.inputs + spec.outputs).first { $0.name.caseInsensitiveCompare(pin.name) == .orderedSame }
     }
 }
 
@@ -296,6 +313,7 @@ private struct S7BoxTitleRow: View {
                 .font(.system(size: 11, weight: .bold))
                 .foregroundStyle(box.instruction == .empty ? SiemensColors.placeholder : Color.primary)
                 .lineLimit(1)
+                .minimumScaleFactor(0.7)
             Spacer(minLength: 2)
             Text(box.instruction.spec.powerOutput)
                 .font(.system(size: 10))

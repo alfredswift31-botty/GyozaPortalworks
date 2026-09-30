@@ -2,7 +2,7 @@ import SwiftUI
 
 /// An exercise's reference solution drawn with the GX Works3 ladder
 /// renderer: rung statements, device comments, step numbers and END, then
-/// the instruction list it converts to. Display only.
+/// the conversion result (step and code). Display only.
 struct MelsecReferenceView: View {
     let exercise: Exercise
     let ladder: MelsecLadder
@@ -19,16 +19,31 @@ struct MelsecReferenceView: View {
                 .background(VendorTheme.gxWorks3.editorBackground)
                 .overlay(Rectangle().stroke(Color.secondary.opacity(0.3)))
             }
-            ReferenceSection(title: "Instruction list", detail: "What Convert (F4) turns the ladder into.") {
-                Text(exercise.solution)
-                    .font(.system(size: 11, design: .monospaced))
-                    .textSelection(.enabled)
-                    .padding(10)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(VendorTheme.gxWorks3.editorBackground)
-                    .overlay(Rectangle().stroke(Color.secondary.opacity(0.3)))
+            ReferenceSection(title: "Conversion result", detail: "The instruction list Convert (F4) turns the ladder into, step by step.") {
+                listing
             }
         }
+    }
+
+    private var listing: some View {
+        Grid(alignment: .leading, horizontalSpacing: 18, verticalSpacing: 2) {
+            GridRow {
+                Text("Step").font(.system(size: 11, weight: .semibold))
+                Text("Code").font(.system(size: 11, weight: .semibold))
+            }
+            ForEach(Array(MelsecConverter.convert(ladder).listing(.fx5u).enumerated()), id: \.offset) { _, line in
+                GridRow {
+                    Text("\(line.step)").foregroundStyle(.secondary)
+                    Text(line.code)
+                }
+                .font(.system(size: 11, design: .monospaced))
+            }
+        }
+        .textSelection(.enabled)
+        .padding(10)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(VendorTheme.gxWorks3.editorBackground)
+        .overlay(Rectangle().stroke(Color.secondary.opacity(0.3)))
     }
 
     private var drawing: MelsecLadderDrawing {

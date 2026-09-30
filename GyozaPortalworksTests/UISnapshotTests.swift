@@ -103,7 +103,7 @@ struct UISnapshotTests {
     }
 
     /// Reference solutions drawn with the editors' own views, for review.
-    @Test(arguments: ["tia-01-seal-in", "tia-05-traffic-light", "tia-07-storage", "tia-10-scl-traffic-light",
+    @Test(arguments: ["tia-01-seal-in", "tia-05-traffic-light", "tia-07-storage", "tia-08-star-delta", "tia-10-scl-traffic-light",
                       "gx-01-self-hold", "gx-05-traffic-light", "gx-10-master-control"])
     func referenceSolution(_ id: String) throws {
         let exercise = try #require(ExerciseLibrary.all.first { $0.id == id })

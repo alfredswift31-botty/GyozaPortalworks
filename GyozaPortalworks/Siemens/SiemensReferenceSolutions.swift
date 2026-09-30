@@ -62,12 +62,12 @@ nonisolated enum SiemensReferenceSolutions {
 
     private static func onDelay() -> SiemensProject {
         make(tags: [("S1_Switch", .bool, "%I0.0"), ("H1_Lamp", .bool, "%Q0.0")]) { project in
-            let timer = project.createInstanceDataBlock(for: .onDelayTimer) ?? ""
+            let timer = project.createInstanceDataBlock(for: .onDelayTimer, name: "T_Delay") ?? ""
             return [
                 LAD.net(LAD.no("\"S1_Switch\""), LAD.box(.onDelayTimer, instance: timer, ["PT": "T#5S"]), LAD.coil("\"H1_Lamp\""))
                     .titled("Lamp on 5 s after the switch",
                             "TON: Q turns on once IN has been on for PT = 5 s, and off at once when IN turns off. "
-                                + "Placing the TON creates its instance data block (Call options)."),
+                                + "Placing the TON asks for its instance data block (Call options): name it T_Delay."),
             ]
         }
     }
@@ -86,31 +86,31 @@ nonisolated enum SiemensReferenceSolutions {
     private static func trafficLight() -> SiemensProject {
         make(tags: [("S1_Start", .bool, "%I0.0"), ("S2_Stop", .bool, "%I0.1"), ("Red", .bool, "%Q0.0"),
                     ("Amber", .bool, "%Q0.1"), ("Green", .bool, "%Q0.2"), ("Run", .bool, "%M10.0")]) { project in
-            let t1 = project.createInstanceDataBlock(for: .onDelayTimer) ?? ""
-            let t2 = project.createInstanceDataBlock(for: .onDelayTimer) ?? ""
-            let t3 = project.createInstanceDataBlock(for: .onDelayTimer) ?? ""
+            let t1 = project.createInstanceDataBlock(for: .onDelayTimer, name: "T_Red") ?? ""
+            let t2 = project.createInstanceDataBlock(for: .onDelayTimer, name: "T_Green") ?? ""
+            let t3 = project.createInstanceDataBlock(for: .onDelayTimer, name: "T_Amber") ?? ""
             return [
                 LAD.net(LAD.par([LAD.no("\"S1_Start\"")], [LAD.no("\"Run\"")]), LAD.no("\"S2_Stop\""), LAD.coil("\"Run\""))
                     .titled("Run with seal-in", "Run is a memory bit that stays on from Start until Stop."),
                 LAD.net(LAD.no("\"Run\""), LAD.nc(t3 + ".Q"), LAD.box(.onDelayTimer, instance: t1, ["PT": "T#5S"]))
-                    .titled("Red phase: 5 s", "The first timer. When the last timer finishes, its Q breaks this rung for one cycle, which restarts the sequence."),
+                    .titled("Red phase: 5 s", "T_Red times while running. When T_Amber finishes, its Q breaks this rung for one cycle, which restarts the sequence."),
                 LAD.net(LAD.no(t1 + ".Q"), LAD.box(.onDelayTimer, instance: t2, ["PT": "T#4S"]))
-                    .titled("Green phase: 4 s", "Starts when the red phase is over."),
+                    .titled("Green phase: 4 s", "T_Green starts when T_Red is done."),
                 LAD.net(LAD.no(t2 + ".Q"), LAD.box(.onDelayTimer, instance: t3, ["PT": "T#1S"]))
-                    .titled("Amber phase: 1 s", "Starts when the green phase is over."),
+                    .titled("Amber phase: 1 s", "T_Amber starts when T_Green is done."),
                 LAD.net(LAD.no("\"Run\""), LAD.nc(t1 + ".Q"), LAD.coil("\"Red\""))
-                    .titled("Red lamp", "On while running and the red phase hasn't finished."),
+                    .titled("Red lamp", "On while running and T_Red hasn't finished."),
                 LAD.net(LAD.no(t1 + ".Q"), LAD.nc(t2 + ".Q"), LAD.coil("\"Green\""))
-                    .titled("Green lamp", "Between the end of red and the end of green."),
+                    .titled("Green lamp", "From the end of T_Red to the end of T_Green."),
                 LAD.net(LAD.no(t2 + ".Q"), LAD.nc(t3 + ".Q"), LAD.coil("\"Amber\""))
-                    .titled("Amber lamp", "Between the end of green and the end of amber."),
+                    .titled("Amber lamp", "From the end of T_Green to the end of T_Amber."),
             ]
         }
     }
 
     private static func batchCounter() -> SiemensProject {
         make(tags: [("B1_Part", .bool, "%I0.0"), ("S1_Reset", .bool, "%I0.1"), ("H1_BatchComplete", .bool, "%Q0.0")]) { project in
-            let counter = project.createInstanceDataBlock(for: .countUp) ?? ""
+            let counter = project.createInstanceDataBlock(for: .countUp, name: "C_Batch") ?? ""
             return [
                 LAD.net(LAD.no("\"B1_Part\""), LAD.box(.countUp, instance: counter, type: .int, ["R": "\"S1_Reset\"", "PV": "5"]),
                         LAD.coil("\"H1_BatchComplete\""))
@@ -123,17 +123,16 @@ nonisolated enum SiemensReferenceSolutions {
     private static func storage() -> SiemensProject {
         make(tags: [("PEB1", .bool, "%I0.0"), ("PEB2", .bool, "%I0.1"), ("RESET", .bool, "%I0.2"),
                     ("STOR_EMPTY", .bool, "%Q0.0"), ("STOR_NOT_EMPTY", .bool, "%Q0.1"), ("STOR_FULL", .bool, "%Q0.2")]) { project in
-            let counter = project.createInstanceDataBlock(for: .countUpDown) ?? ""
+            let counter = project.createInstanceDataBlock(for: .countUpDown, name: "C_Storage") ?? ""
             return [
                 LAD.net(LAD.no("\"PEB1\""),
-                        LAD.box(.countUpDown, instance: counter, ["PV": "10", "QD": "\"STOR_EMPTY\""],
-                                branches: ["CD": [LAD.no("\"PEB2\"")], "R": [LAD.no("\"RESET\"")]]),
+                        LAD.box(.countUpDown, instance: counter, ["CD": "\"PEB2\"", "R": "\"RESET\"", "PV": "10", "QD": "\"STOR_EMPTY\""]),
                         LAD.coil("\"STOR_FULL\""))
                     .titled("Count parts in and out",
                             "PEB1 (part in) counts up at CU, PEB2 (part out) counts down at CD, RESET clears the count. "
                                 + "QU (CV >= PV = 10) drives STOR_FULL; QD (CV <= 0) is written to STOR_EMPTY."),
                 LAD.net(LAD.nc(counter + ".QD"), LAD.coil("\"STOR_NOT_EMPTY\""))
-                    .titled("Storage not empty", "The opposite of QD, read from the counter's instance data block."),
+                    .titled("Storage not empty", "The opposite of QD, read from the counter's instance data block C_Storage."),
             ]
         }
     }
@@ -141,8 +140,8 @@ nonisolated enum SiemensReferenceSolutions {
     private static func starDelta() -> SiemensProject {
         make(tags: [("S1_Start", .bool, "%I0.0"), ("S0_Stop", .bool, "%I0.1"), ("K1_Main", .bool, "%Q0.0"),
                     ("K2_Star", .bool, "%Q0.1"), ("K3_Delta", .bool, "%Q0.2")]) { project in
-            let star = project.createInstanceDataBlock(for: .onDelayTimer) ?? ""
-            let pause = project.createInstanceDataBlock(for: .onDelayTimer) ?? ""
+            let star = project.createInstanceDataBlock(for: .onDelayTimer, name: "T_Star") ?? ""
+            let pause = project.createInstanceDataBlock(for: .onDelayTimer, name: "T_Pause") ?? ""
             return [
                 LAD.net(LAD.par([LAD.no("\"S1_Start\"")], [LAD.no("\"K1_Main\"")]), LAD.no("\"S0_Stop\""), LAD.coil("\"K1_Main\""))
                     .titled("Main contactor with seal-in", "K1_Main stays on from Start until Stop."),
@@ -151,9 +150,9 @@ nonisolated enum SiemensReferenceSolutions {
                 LAD.net(LAD.no(star + ".Q"), LAD.box(.onDelayTimer, instance: pause, ["PT": "T#100MS"]))
                     .titled("Changeover pause: 100 ms", "Star must drop out before delta pulls in."),
                 LAD.net(LAD.no("\"K1_Main\""), LAD.nc(star + ".Q"), LAD.nc("\"K3_Delta\""), LAD.coil("\"K2_Star\""))
-                    .titled("Star contactor", "On until the star time ends. The normally closed K3_Delta contact is the interlock."),
+                    .titled("Star contactor", "On until T_Star ends. The normally closed K3_Delta contact is the interlock."),
                 LAD.net(LAD.no(pause + ".Q"), LAD.nc("\"K2_Star\""), LAD.coil("\"K3_Delta\""))
-                    .titled("Delta contactor", "On after the pause. The normally closed K2_Star contact is the interlock."),
+                    .titled("Delta contactor", "On after T_Pause. The normally closed K2_Star contact is the interlock."),
             ]
         }
     }

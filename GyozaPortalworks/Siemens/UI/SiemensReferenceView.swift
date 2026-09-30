@@ -134,6 +134,8 @@ struct SiemensReferenceView: View {
             .padding(10)
             .allowsHitTesting(false)
         }
+        // Take the networks' full height; a horizontal scroll view otherwise clips the last one.
+        .fixedSize(horizontal: false, vertical: true)
         .background(SiemensColors.theme.editorBackground)
         .overlay(Rectangle().stroke(Color.secondary.opacity(0.3)))
     }
