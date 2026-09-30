@@ -9,7 +9,7 @@ import Testing
 @MainActor
 struct LiveMonitoringTests {
     /// Renders the same hosting view again after the CPU state changes.
-    private final class LiveView {
+    @MainActor private final class LiveView {
         let host: NSHostingView<AnyView>
         let window: NSWindow
 
@@ -73,6 +73,58 @@ struct LiveMonitoringTests {
         workspace.session?.refresh()
         let offAgain = try live.pixels()
         #expect(offAgain != on, "The monitored network didn't redraw after %I0.0 turned off")
+    }
+
+    /// The user's setup end to end: the app model, exercise 1 wired to the
+    /// trainer, the simulation's real timer, and the coil typed "K1_motor"
+    /// while the tag is K1_Motor. On a real Mac the watch table showed
+    /// %Q0.0 TRUE while the trainer's lamp (the output terminal) stayed off.
+    @Test func exerciseOneDrivesTheOutputTerminalsInRealTime() throws {
+        let model = AppModel()
+        model.environment = .tiaPortal
+        let workspace = try #require(model.activeWorkspace as? SiemensWorkspace)
+        var project = try #require(SiemensReferenceSolutions.project(for: "tia-01-seal-in"))
+        project.blocks[0].networks = [
+            LAD.net(LAD.par([LAD.no("\"S1_Start\"")], [LAD.no("\"K1_Motor\"")]), LAD.no("\"S2_Stop\""),
+                    LAD.coil("\"K1_motor\""), LAD.coil("\"H1_Running\"")),
+        ]
+        _ = workspace.edit { $0 = project }
+        workspace.startSimulation()
+        workspace.searchDevices()
+        workspace.loadFromExtendedDownload()
+        workspace.confirmLoadPreview()
+        workspace.finishLoad(startAll: true)
+        defer {
+            workspace.stopSimulation()
+            model.activate(nil)
+        }
+        let exercise = try #require(ExerciseLibrary.exercises(for: .tiaPortal).first { $0.id == "tia-01-seal-in" })
+        model.activate(exercise)
+        let session = try #require(model.activeSession)
+        #expect(session === workspace.session)
+        let cpu = try #require(workspace.cpu)
+
+        func state() -> String {
+            let q0 = cpu.readOperand("%Q0.0").map { S7ValueText.text($0) } ?? "?"
+            let log = cpu.diagnostics.suffix(5).map(\.message).joined(separator: " | ")
+            return "mode \(cpu.mode.rawValue), %Q0.0 \(q0), terminal Q0.0 \(cpu.digitalOutput(0)), log: \(log)"
+        }
+
+        RunLoop.main.run(until: Date().addingTimeInterval(0.3))
+        #expect(cpu.mode == .run, "\(state())")
+        #expect(cpu.digitalInput(1), "S2 is wired normally closed: TRUE at rest")
+
+        // Press S1 on the trainer for 0.3 s, then release it.
+        cpu.setDigitalInput(0, true)
+        session.refresh()
+        RunLoop.main.run(until: Date().addingTimeInterval(0.3))
+        cpu.setDigitalInput(0, false)
+        session.refresh()
+        RunLoop.main.run(until: Date().addingTimeInterval(0.3))
+
+        #expect(cpu.readOperand("%Q0.0")?.boolValue == true, "\(state())")
+        #expect(cpu.digitalOutput(0), "The K1 terminal should be on: \(state())")
+        #expect(cpu.digitalOutput(1), "The H1 terminal should be on: \(state())")
     }
 
     /// Reported on a real Mac: the trainer's output lamps stayed off while the
