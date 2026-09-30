@@ -9,6 +9,7 @@ GyozaPortalworks is a Mac app for practising Siemens TIA Portal and Mitsubishi G
 | 1.0 | 2026-09-28 | [v1.0](https://github.com/alfredswift31-botty/GyozaPortalworks/releases/tag/v1.0) | First release |
 | 1.0.1 | 2026-09-30 | [v1.0.1](https://github.com/alfredswift31-botty/GyozaPortalworks/releases/tag/v1.0.1) | Live TIA monitoring fix, exercise 1 hint fix |
 | 1.0.2 | 2026-09-30 | [v1.0.2](https://github.com/alfredswift31-botty/GyozaPortalworks/releases/tag/v1.0.2) | Reference solutions drawn as real ladders |
+| 1.0.3 | 2026-09-30 | [v1.0.3](https://github.com/alfredswift31-botty/GyozaPortalworks/releases/tag/v1.0.3) | Trainer lamps and watch table live |
 
 Every release is an ad-hoc-signed `.zip` built by GitHub Actions. To install, drag the app to Applications and right-click › Open the first time.
 
@@ -99,6 +100,27 @@ The user asked for reference solutions that look like the tools' own ladders, wi
   - The storage counter now takes PEB2 and RESET directly on its pins.
 - **Tests:** snapshot tests render eight references for review.
 - **Still limited:** a very long tag name on a contact or coil (for example STOR_NOT_EMPTY) is still shortened in the middle, because LAD elements have a fixed width. Real TIA wraps it onto two lines. The tag table above the networks gives the full names.
+
+## 1.0.3: trainer lamps and watch table live
+The user reported, from a real Mac:
+- the trainer's output lamps stayed dark while the ladder showed K1_Motor on;
+- the watch table only changed when monitoring was switched off and on.
+
+**How it was narrowed down.** Asking the user for discriminating checks worked; theorising did not.
+- These were ruled out, each with evidence: forces (MAINT off, force table empty), tag addresses (screenshot), tag-name case (the compiler is case-insensitive), CPU and session identity, the output transfer and the Release optimiser.
+- `LiveMonitoringTests` gained:
+  - an output-grid test, in and out of a scroll view;
+  - a Release-build run of the live tests in CI;
+  - an end-to-end test with AppModel, exercise 1 wired, the real session timer and the user's "K1_motor" coil. It proves the output terminal does turn on.
+- Two wrong turns, recorded so they aren't repeated:
+  - "a LazyVGrid never rebuilds its items" was disproved by the test before any fix shipped;
+  - the user's "close and reopen the trainer" check was flawed, because a single-instance `Window` scene isn't rebuilt when it's closed.
+
+**The two causes:**
+- **Watch table.** Its rows (`SiemensWatchValueRow` and others) had inputs that never change, so SwiftUI skipped them, the same bug class as the 1.0.1 ladder bug. `watchTableMonitorValuesFollowTheCPU` reproduces it in Debug and Release. The fix: the watch, force, tag and data block rows read `session.frame` themselves.
+- **Trainer.** It didn't follow the refresh counter in the real app's trainer window, though the same views do offscreen, and the root cause wasn't found. The fix doesn't depend on it: the trainer redraws on a 20 Hz `TimelineView`, and the tick's date is passed down as an input to every lamp and control, so none can be skipped. **Not verified on a real Mac yet.**
+
+**Rule for live views:** a view that shows CPU state must either receive a value that changes on each refresh, or read the refresh counter in its own body. A parent reading the counter is not enough.
 
 ## Working notes (for the next session)
 - **Branches:** `develop` is where work happens; `main` holds releases. The agent branches `st-engine`, `melsec` and `siemens` are fully merged.
