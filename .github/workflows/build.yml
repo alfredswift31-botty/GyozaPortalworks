@@ -40,14 +40,30 @@ jobs:
             CODE_SIGN_IDENTITY=- CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM= \
             ENABLE_HARDENED_RUNTIME=NO
 
+      # The views that follow the running CPU, built with the Release
+      # optimizer the shipped app uses: a stale display can hide in -O only.
+      - name: Live monitoring tests (Release build)
+        if: always()
+        run: |
+          xcodebuild test \
+            -project GyozaPortalworks.xcodeproj \
+            -scheme GyozaPortalworks \
+            -configuration Release \
+            -only-testing:GyozaPortalworksTests/LiveMonitoringTests \
+            -destination 'platform=macOS' \
+            -resultBundlePath "$RUNNER_TEMP/ReleaseLiveTests.xcresult" \
+            CODE_SIGN_IDENTITY=- CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM= \
+            ENABLE_HARDENED_RUNTIME=NO ENABLE_TESTABILITY=YES
+
       # xcodebuild's log names a failing test but not what failed in it.
       - name: Show test failures
         if: failure()
         run: |
-          RESULT="$RUNNER_TEMP/UnitTests.xcresult"
-          [ -d "$RESULT" ] || { echo "No test results."; exit 0; }
-          xcrun xcresulttool get test-results summary --path "$RESULT" > "$RUNNER_TEMP/summary.json"
-          python3 - "$RUNNER_TEMP/summary.json" <<'PY'
+          for RESULT in "$RUNNER_TEMP/UnitTests.xcresult" "$RUNNER_TEMP/ReleaseLiveTests.xcresult"; do
+            [ -d "$RESULT" ] || continue
+            echo "== $(basename "$RESULT")"
+            xcrun xcresulttool get test-results summary --path "$RESULT" > "$RUNNER_TEMP/summary.json"
+            python3 - "$RUNNER_TEMP/summary.json" <<'PY'
           import json, sys
           summary = json.load(open(sys.argv[1]))
           failures = summary.get("testFailures", [])
@@ -55,8 +71,9 @@ jobs:
               print(f"FAILED {failure.get('testIdentifierString') or failure.get('testName')}")
               print(f"  {failure.get('failureText')}")
           if not failures:
-              print(json.dumps(summary, indent=2))
+              print(f"{summary.get('result')}: {summary.get('passedTests')} passed, {summary.get('failedTests')} failed")
           PY
+          done
 
       # The snapshot tests render the real views; keep the PNGs for review.
       - name: Collect UI snapshots
