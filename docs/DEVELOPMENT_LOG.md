@@ -8,6 +8,7 @@ GyozaPortalworks is a Mac app for practising Siemens TIA Portal and Mitsubishi G
 |---|---|---|---|
 | 1.0 | 2026-09-28 | [v1.0](https://github.com/alfredswift31-botty/GyozaPortalworks/releases/tag/v1.0) | First release |
 | 1.0.1 | 2026-09-30 | [v1.0.1](https://github.com/alfredswift31-botty/GyozaPortalworks/releases/tag/v1.0.1) | Live TIA monitoring fix, exercise 1 hint fix |
+| 1.0.2 | 2026-09-30 | [v1.0.2](https://github.com/alfredswift31-botty/GyozaPortalworks/releases/tag/v1.0.2) | Reference solutions drawn as real ladders |
 
 Every release is an ad-hoc-signed `.zip` built by GitHub Actions. To install, drag the app to Applications and right-click › Open the first time.
 
@@ -78,6 +79,26 @@ Nobody has clicked through the app on a real Mac. Focus, key handling (F-keys, C
   - **Lesson:** any view that passes a class instance the CPU mutates into child views needs a changing value alongside it.
 - **Exercise 1 workflow:** the user was given a step-by-step TIA exercise 1 workflow covering tags, the network (Shift+F2 / F7 / F8 / F9 from the rail stop), Ctrl+B, Ctrl+Shift+X (Start search › Load › Load › Start all › Finish), Ctrl+K, Ctrl+T, the trainer, Check my program, then STOP, Ctrl+M and Simulation › Stop. They also asked why the watch table can't modify %I0.0: the CPU copies the inputs at the start of every cycle and overwrites it, as a real S7-1200 does. Use the Trainer or the Force table instead.
 - **First use:** the user has started learning the app on a real Mac. Nothing has been reported back yet. They were asked to note focus, key, layout and Check-my-program problems. The starter path given to them: GX exercise 1 (type, F4, simulation, F3, trainer ⇧⌘T, Check my program), then TIA exercise 1. Compare the two stop buttons: NO-wired X1 is programmed with ANI, and NC-wired S2 with a normally open contact.
+
+## 1.0.2: reference solutions drawn as real ladders
+The user asked for reference solutions that look like the tools' own ladders, with clear notes on which rung has which contacts. The old text sketches were hard to read.
+
+- **One source of truth:** the references are now real programs in the app.
+  - TIA: `SiemensReferenceSolutions` builds tags, networks with titles and comments, and the SCL FB for exercise 10.
+  - GX: `MelsecReferenceSolutions` holds the Ladder Input sequences plus one statement per rung.
+  - `SiemensExerciseTests` and `MelsecExerciseTests` compile and check these same projects and ladders. The drawing is therefore always a solution that passes, and the GX ladder is checked to convert to the reference instruction list.
+  - The `LAD` builder moved from the tests into the app, in `S7LadderBuilder.swift`.
+- **What the Exercises window shows:**
+  - TIA: a tag table, then Main [OB1] drawn by the editor's own `SiemensRungs`. Network headers and comments are drawn as wrapping text, because the editor's comment field is a single line.
+  - GX: the ladder drawn by `MelsecLadderCanvas` with statements, the wiring as device comments, step numbers and END, and no cursor. Below it, the conversion result (step and code).
+- **Fixes found by reviewing the rendered snapshots.** These improve the editors too, not just the references:
+  - Unused optional box pins now show `...` instead of a red `<???>`, as in TIA.
+  - Long operands and box titles shrink to fit before they truncate.
+  - GX device comments stay inside their cell, using a smaller font and then two lines, instead of running over the bus bar.
+  - Call options can take an instance DB name. The references use T_Red, T_Star, C_Storage and so on.
+  - The storage counter now takes PEB2 and RESET directly on its pins.
+- **Tests:** snapshot tests render eight references for review.
+- **Still limited:** a very long tag name on a contact or coil (for example STOR_NOT_EMPTY) is still shortened in the middle, because LAD elements have a fixed width. Real TIA wraps it onto two lines. The tag table above the networks gives the full names.
 
 ## Working notes (for the next session)
 - **Branches:** `develop` is where work happens; `main` holds releases. The agent branches `st-engine`, `melsec` and `siemens` are fully merged.
