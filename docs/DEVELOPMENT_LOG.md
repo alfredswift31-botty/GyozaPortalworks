@@ -7,6 +7,7 @@ GyozaPortalworks is a Mac app for practising Siemens TIA Portal and Mitsubishi G
 | Version | Date | Release | Notes |
 |---|---|---|---|
 | 1.0 | 2026-09-28 | [v1.0](https://github.com/alfredswift31-botty/GyozaPortalworks/releases/tag/v1.0) | First release |
+| 1.0.1 | 2026-09-30 | [v1.0.1](https://github.com/alfredswift31-botty/GyozaPortalworks/releases/tag/v1.0.1) | Live TIA monitoring fix, exercise 1 hint fix |
 
 Every release is an ad-hoc-signed `.zip` built by GitHub Actions. To install, drag the app to Applications and right-click › Open the first time.
 
@@ -65,8 +66,17 @@ Nobody has clicked through the app on a real Mac. Focus, key handling (F-keys, C
 4. GX: a separate GX Simulator3 window (needs an `App/` window scene) and Element Selection drag-and-drop.
 5. Add `DiagnosticEvent.code` for real error codes, if they can be sourced.
 
-## After 1.0 (on `main`, not released yet)
-- **29 Sep 2026: GX exercise 1 hint fixed (commit 87ff4f0).** The hint said to type `LD X0, OR Y0, ANI X1, OUT Y0`. The `OR Y0` step fails with "An OR branch needs a ladder above it", because the editor places OR at the cursor, as GX Works3 does. The hint now gives the order the tests use: `LD X0, ANI X1, OUT Y0`, and then, with the cursor at the start of the next row, `OR Y0`. CI is green. Release it as 1.0.1 when the user asks. It's the only "type it in" hint in the exercises.
+## 1.0.1
+- **29 Sep 2026: GX exercise 1 hint fixed (commit 87ff4f0).** The hint said to type `LD X0, OR Y0, ANI X1, OUT Y0`. The `OR Y0` step fails with "An OR branch needs a ladder above it", because the editor places OR at the cursor, as GX Works3 does. The hint now gives the order the tests use: `LD X0, ANI X1, OUT Y0`, and then, with the cursor at the start of the next row, `OR Y0`. CI is green. It's the only "type it in" hint in the exercises.
+- **30 Sep 2026: TIA monitoring now redraws live (commit 7960344).** The user found this on a real Mac. Pressing Start in the I/O Trainer didn't turn the rung green; the ladder only caught up after switching to another tab and back.
+  - **Cause:** `S7LadderContext` carried the block's `S7BlockMonitor`, one object the CPU updates in place. `SiemensNetworkList` re-ran on every refresh, but each `SiemensNetworkView` got identical inputs, so SwiftUI skipped redrawing it.
+  - **Fix:** the context now also carries the session's refresh counter, so every refresh counts as new data.
+  - **Not affected:** GX Works3 builds a new `MelsecLadderDrawing` value for every redraw, and the watch table, PLCSIM panel and trainer read the refresh counter themselves.
+  - **Why the tests missed it:** the snapshot tests rendered a new view each time, which is the same as switching tabs.
+  - **New test:** `LiveMonitoringTests` keeps one view on screen and checks that it changes when %I0.0 turns on and off. It failed on the old code (commit 8920d76) and passes with the fix.
+  - **CI:** a failing test now prints its failure text.
+  - **Lesson:** any view that passes a class instance the CPU mutates into child views needs a changing value alongside it.
+- **Exercise 1 workflow:** the user was given a step-by-step TIA exercise 1 workflow covering tags, the network (Shift+F2 / F7 / F8 / F9 from the rail stop), Ctrl+B, Ctrl+Shift+X (Start search › Load › Load › Start all › Finish), Ctrl+K, Ctrl+T, the trainer, Check my program, then STOP, Ctrl+M and Simulation › Stop. They also asked why the watch table can't modify %I0.0: the CPU copies the inputs at the start of every cycle and overwrites it, as a real S7-1200 does. Use the Trainer or the Force table instead.
 - **First use:** the user has started learning the app on a real Mac. Nothing has been reported back yet. They were asked to note focus, key, layout and Check-my-program problems. The starter path given to them: GX exercise 1 (type, F4, simulation, F3, trainer ⇧⌘T, Check my program), then TIA exercise 1. Compare the two stop buttons: NO-wired X1 is programmed with ANI, and NC-wired S2 with a normally open contact.
 
 ## Working notes (for the next session)
