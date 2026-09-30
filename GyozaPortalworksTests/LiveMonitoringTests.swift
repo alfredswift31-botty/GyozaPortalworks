@@ -77,7 +77,8 @@ struct LiveMonitoringTests {
 
     /// Reported on a real Mac: the trainer's output lamps stayed off while the
     /// program switched the outputs on. Only the output grid is drawn here, so
-    /// a change can only come from the lamps.
+    /// a change can only come from the lamps. Without the scroll view the test
+    /// passed on the broken lamps.
     @Test func trainerOutputLampsFollowTheCPU() throws {
         let workspace = SiemensWorkspace(project: .newProject(), store: nil)
         workspace.startsSessionTimer = false
@@ -99,7 +100,10 @@ struct LiveMonitoringTests {
         cpu.scan(clock: 10)
         session.refresh()
 
-        let live = LiveView(TrainerOutputGrid(session: session, exercise: nil), size: CGSize(width: 700, height: 260))
+        // In a scroll view, as on the trainer board: a lazy grid only builds its
+        // items lazily inside one.
+        let live = LiveView(ScrollView { TrainerOutputGrid(session: session, exercise: nil).padding(20) },
+                            size: CGSize(width: 700, height: 260))
         let off = try live.pixels()
         #expect(!cpu.digitalOutput(0))
 
