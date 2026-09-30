@@ -7,6 +7,8 @@ import Observation
 @MainActor @Observable final class SimulationSession {
     static let scanInterval: TimeInterval = 0.010
     private static let scansPerRefresh = 5
+    /// How often displays refresh: every `scansPerRefresh` scans, 20 times a second.
+    static let displayInterval: TimeInterval = scanInterval * Double(scansPerRefresh)
 
     let cpu: any SimulatedCPU
     /// Changes whenever the display should refresh; monitors read it to redraw.

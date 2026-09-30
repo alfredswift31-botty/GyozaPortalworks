@@ -8,7 +8,15 @@ struct TrainerView: View {
     var body: some View {
         Group {
             if let session = model.activeSession {
-                TrainerBoard(session: session, environment: model.environment, exercise: model.activeExercise)
+                // Redraw on a clock as well as on the session's refresh counter:
+                // on a real Mac the trainer window didn't follow the counter
+                // (its lamps stayed dark while the outputs were on), though
+                // the same views do offscreen. Each tick's date is passed down
+                // as an input, so SwiftUI can't skip the lamps and buttons.
+                TimelineView(.periodic(from: .now, by: SimulationSession.displayInterval)) { context in
+                    TrainerBoard(session: session, environment: model.environment, exercise: model.activeExercise,
+                                 tick: context.date)
+                }
             } else {
                 ContentUnavailableView {
                     Label("\(model.environment.simulatorName) isn't running", systemImage: "powerplug")
@@ -25,11 +33,12 @@ private struct TrainerBoard: View {
     let session: SimulationSession
     let environment: PracticeEnvironment
     let exercise: Exercise?
+    /// The display clock's tick; a new value on every tick makes the board redraw.
+    let tick: Date
 
     private let columns = [GridItem(.adaptive(minimum: 84, maximum: 110), spacing: 10)]
 
     var body: some View {
-        // Reading the frame counter redraws the board with every refresh.
         let _ = session.frame
         let cpu = session.cpu
         ScrollView {
@@ -38,27 +47,24 @@ private struct TrainerBoard: View {
                 section("Inputs") {
                     LazyVGrid(columns: columns, spacing: 14) {
                         ForEach(0..<cpu.digitalInputCount, id: \.self) { index in
-                            LiveRefresh(session: session) {
-                                InputControl(session: session, index: index, assignment: exercise?.assignment(for: .digitalInput(index)))
-                            }
+                            InputControl(session: session, index: index, assignment: exercise?.assignment(for: .digitalInput(index)),
+                                         tick: tick)
                         }
                     }
                 }
                 section("Outputs") {
-                    TrainerOutputGrid(session: session, exercise: exercise)
+                    TrainerOutputGrid(session: session, exercise: exercise, tick: tick)
                 }
                 if cpu.analogInputCount + cpu.analogOutputCount > 0 {
                     section("Analog") {
                         VStack(alignment: .leading, spacing: 12) {
                             ForEach(0..<cpu.analogInputCount, id: \.self) { channel in
-                                LiveRefresh(session: session) {
-                                    AnalogInputControl(session: session, channel: channel, assignment: exercise?.assignment(for: .analogInput(channel)))
-                                }
+                                AnalogInputControl(session: session, channel: channel, assignment: exercise?.assignment(for: .analogInput(channel)),
+                                                   tick: tick)
                             }
                             ForEach(0..<cpu.analogOutputCount, id: \.self) { channel in
-                                LiveRefresh(session: session) {
-                                    AnalogOutputGauge(session: session, channel: channel, assignment: exercise?.assignment(for: .analogOutput(channel)))
-                                }
+                                AnalogOutputGauge(session: session, channel: channel, assignment: exercise?.assignment(for: .analogOutput(channel)),
+                                                  tick: tick)
                             }
                         }
                     }
@@ -96,6 +102,8 @@ private struct TrainerBoard: View {
 struct TrainerOutputGrid: View {
     let session: SimulationSession
     let exercise: Exercise?
+    /// See TrainerBoard.tick.
+    var tick: Date = .distantPast
 
     private let columns = [GridItem(.adaptive(minimum: 84, maximum: 110), spacing: 10)]
 
@@ -135,6 +143,8 @@ private struct InputControl: View {
     let session: SimulationSession
     let index: Int
     let assignment: IOAssignment?
+    /// See TrainerBoard.tick: a new value redraws the control with the CPU's current state.
+    var tick: Date = .distantPast
 
     @State private var isPressed = false
 
@@ -256,6 +266,8 @@ private struct AnalogInputControl: View {
     let session: SimulationSession
     let channel: Int
     let assignment: IOAssignment?
+    /// See TrainerBoard.tick: a new value redraws the control with the CPU's current state.
+    var tick: Date = .distantPast
 
     var body: some View {
         let cpu = session.cpu
@@ -292,6 +304,8 @@ private struct AnalogOutputGauge: View {
     let session: SimulationSession
     let channel: Int
     let assignment: IOAssignment?
+    /// See TrainerBoard.tick: a new value redraws the control with the CPU's current state.
+    var tick: Date = .distantPast
 
     var body: some View {
         let cpu = session.cpu

@@ -274,6 +274,7 @@ private struct SiemensTagRow: View {
     let issues: [SiemensTagIssue]
 
     var body: some View {
+        let _ = workspace.session?.frame
         HStack(spacing: 0) {
             SiemensCellField(text: tag.name, isError: has(.name)) { text in workspace.updateTag(tag.id) { $0.name = text } }
                 .frame(width: SiemensColumns.name)
@@ -437,14 +438,18 @@ struct SiemensDataBlockEditor: View {
                 LazyVStack(alignment: .leading, spacing: 0) {
                     if dataBlock.kind == .global {
                         ForEach(dataBlock.members) { member in
-                            SiemensVariableRow(workspace: workspace, owner: .dataBlock(dataBlock.id), variable: member,
-                                               monitorValue: monitor(member.name))
+                            LiveRefresh(session: workspace.session) {
+                                SiemensVariableRow(workspace: workspace, owner: .dataBlock(dataBlock.id), variable: member,
+                                                   monitorValue: monitor(member.name))
+                            }
                             SiemensStructMembers(variable: member, prefix: member.name, depth: 1, workspace: workspace, dataBlock: dataBlock)
                         }
                         SiemensAddNewRow { workspace.addVariable(to: .dataBlock(dataBlock.id)) }
                     } else {
                         ForEach(instanceRows) { row in
-                            SiemensReadOnlyRow(name: row.path, type: row.type, value: monitor(row.path))
+                            LiveRefresh(session: workspace.session) {
+                                SiemensReadOnlyRow(name: row.path, type: row.type, value: monitor(row.path))
+                            }
                         }
                     }
                 }
@@ -496,6 +501,7 @@ private struct SiemensStructMembers: View {
     let dataBlock: SiemensDataBlock
 
     var body: some View {
+        let _ = workspace.session?.frame
         ForEach(variable.members) { member in
             SiemensReadOnlyRow(name: String(repeating: "   ", count: depth) + member.name, type: member.dataType,
                                value: workspace.isOnline ? workspace.monitorValue(ofOperand: "\"\(dataBlock.name)\".\(prefix).\(member.name)") : nil)

@@ -88,6 +88,8 @@ private struct SiemensWatchValueRow: View {
     let row: SiemensWatchRow
 
     var body: some View {
+        // A row of a lazy stack: read the refresh counter here so its monitor value stays live.
+        let _ = workspace.session?.frame
         let resolved = resolve()
         HStack(spacing: 0) {
             SiemensCellField(text: row.operand) { text in workspace.updateWatchRow(row.id, in: table.id) { $0.operand = text } }
@@ -208,6 +210,7 @@ private struct SiemensForceRowView: View {
     let row: SiemensForceRow
 
     var body: some View {
+        let _ = workspace.session?.frame
         HStack(spacing: 0) {
             SiemensCellField(text: row.operand) { text in workspace.updateForceRow(row.id) { $0.operand = text } }
                 .frame(width: SiemensColumns.name)
