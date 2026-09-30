@@ -118,13 +118,20 @@ The user reported, from a real Mac:
 
 **The two causes:**
 - **Watch table.** Its rows (`SiemensWatchValueRow` and others) had inputs that never change, so SwiftUI skipped them, the same bug class as the 1.0.1 ladder bug. `watchTableMonitorValuesFollowTheCPU` reproduces it in Debug and Release. The fix: the watch, force, tag and data block rows read `session.frame` themselves.
-- **Trainer.** It didn't follow the refresh counter in the real app's trainer window, though the same views do offscreen, and the root cause wasn't found. The fix doesn't depend on it: the trainer redraws on a 20 Hz `TimelineView`, and the tick's date is passed down as an input to every lamp and control, so none can be skipped. **Not verified on a real Mac yet.**
+- **Trainer.** It didn't follow the refresh counter in the real app's trainer window, though the same views do offscreen, and the root cause wasn't found. The fix doesn't depend on it: the trainer redraws on a 20 Hz `TimelineView`, and the tick's date is passed down as an input to every lamp and control, so none can be skipped. **Verified on the user's Mac (30 Sep, 1.0.3):** the K1 Motor and H1 Running lamps follow S1/S2 live, and the watch table flips TRUE/FALSE live.
 
 **Rule for live views:** a view that shows CPU state must either receive a value that changes on each refresh, or read the refresh counter in its own body. A parent reading the counter is not enough.
+
+## Open items (after 1.0.3)
+- **Trainer root cause still unknown.** The trainer window didn't follow `session.frame` in the real app, though the same views do offscreen in Debug and Release. The 20 Hz `TimelineView` works around it. If another separate window shows live data, give it the same clock rather than relying on the counter.
+- **GX Works3 live views not yet checked for the stale-row bug:** the watch window, Device Batch Monitor and ST monitor. They use value rows or Tables, which should be fine, but none has a live test like `LiveMonitoringTests`. Add one per view.
+- **Tag renames don't update operands.** The user's coil still reads "K1_motor" after the tag became K1_Motor. It resolves correctly, because lookup is case-insensitive, but real TIA rewrites every use when a tag is renamed. Check `updateTag` for rename propagation.
+- **First real use of the app:** TIA exercise 1 was completed end to end on a real Mac (tags, LAD, compile, download, online, monitoring, trainer, watch table). GX Works3 hasn't been used on a real Mac yet.
 
 ## Working notes (for the next session)
 - **Branches:** `develop` is where work happens; `main` holds releases. The agent branches `st-engine`, `melsec` and `siemens` are fully merged.
 - **Releases:** run the Build workflow manually on `main` with `release_tag: vX.Y`. The dev container's proxy rejects tag pushes, so the workflow creates the tag.
 - **Syntax checks:** there is no local Swift compiler. Use the tree-sitter syntax check, then CI. Known tree-sitter false positives: `x as? T ?? y` and `await` inside `if let`.
 - **Build settings:** default MainActor isolation, Swift 5 mode, and MemberImportVisibility. Engine types are marked `nonisolated`, and every file imports what it uses.
+- **Live display tests:** `LiveMonitoringTests` redraws one view after the CPU changes and compares pixels. CI also runs these tests on a Release build. Reproduce a display bug there first: push the test before the fix and watch it fail.
 - **Delegation briefs:** they sit in the session scratchpad, not the repo: `st-agent-brief.md`, `melsec-agent-brief.md`, `siemens-agent-brief.md` and `ui-brief-*.md`.
