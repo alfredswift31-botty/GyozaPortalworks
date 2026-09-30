@@ -75,6 +75,47 @@ struct LiveMonitoringTests {
         #expect(offAgain != on, "The monitored network didn't redraw after %I0.0 turned off")
     }
 
+    /// Reported on a real Mac: a monitored watch table kept showing the old
+    /// values until monitoring was switched off and on again.
+    @Test func watchTableMonitorValuesFollowTheCPU() throws {
+        let workspace = SiemensWorkspace(project: .newProject(), store: nil)
+        workspace.startsSessionTimer = false
+        for (command, operand) in [(S7EditorCommand.insertContact(.normallyOpen), "%I0.0"),
+                                   (.insertCoil(.assign), "%Q0.0")] {
+            workspace.perform(command)
+            let target = try #require(workspace.editingOperand)
+            let block = try #require(workspace.currentBlock)
+            workspace.commitOperand(operand, target: target, inBlock: block.id)
+        }
+        workspace.startSimulation()
+        workspace.searchDevices()
+        workspace.loadFromExtendedDownload()
+        workspace.confirmLoadPreview()
+        workspace.finishLoad(startAll: true)
+        defer { workspace.stopSimulation() }
+        let cpu = try #require(workspace.cpu)
+        workspace.goOnline()
+        workspace.addWatchTable()
+        let tableID = try #require(workspace.project.watchTables.first?.id)
+        workspace.addWatchRow("%Q0.0", to: tableID)
+        workspace.toggleMonitorAll(tableID)
+        cpu.scan(clock: 10)
+        workspace.session?.refresh()
+        let table = try #require(workspace.project.watchTables.first)
+        #expect(table.rows.count == 1)
+
+        let live = LiveView(SiemensWatchTableView(workspace: workspace, table: table), size: CGSize(width: 900, height: 200))
+        let off = try live.pixels()
+
+        cpu.setDigitalInput(0, true)
+        cpu.scan(clock: 20)
+        cpu.scan(clock: 30)
+        workspace.session?.refresh()
+        #expect(workspace.watchValue(table.rows[0], table: tableID) == "TRUE")
+        let on = try live.pixels()
+        #expect(on != off, "The watch table kept showing FALSE for %Q0.0")
+    }
+
     /// The user's setup end to end: the app model, exercise 1 wired to the
     /// trainer, the simulation's real timer, and the coil typed "K1_motor"
     /// while the tag is K1_Motor. On a real Mac the watch table showed
